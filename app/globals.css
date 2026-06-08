@@ -1,0 +1,230 @@
+:root {
+  /* ── Login / dark-theme globals ── */
+  --background-start: #0f172a;
+  --background-end:   #1e1e2e;
+  --text-primary:     #f8fafc;
+  --text-secondary:   #94a3b8;
+  --accent:           #6366f1;
+  --accent-hover:     #4f46e5;
+  --glass-bg:         rgba(255, 255, 255, 0.04);
+  --glass-border:     rgba(255, 255, 255, 0.1);
+  --glass-blur:       blur(24px);
+
+  /* ── Dashboard design system (light content area) ── */
+  --color-text-primary:   #0f172a;
+  --color-text-secondary: #475569;
+  --color-text-muted:     #94a3b8;
+
+  --color-surface:        #ffffff;
+  --color-bg:             #f1f5f9;
+
+  --color-border:         #e2e8f0;
+  --color-border-strong:  #cbd5e1;
+
+  --color-accent:         #6366f1;
+  --color-accent-hover:   #4f46e5;
+  --color-accent-light:   #eef2ff;
+
+  --color-success-bg:     #ecfdf5;
+  --color-warning-bg:     #fffbeb;
+  --color-danger-bg:      #fef2f2;
+
+  --radius-sm:  6px;
+  --radius-md:  9px;
+  --radius-lg:  14px;
+
+  --shadow-sm:  0 1px 3px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md:  0 4px 16px rgba(0,0,0,0.08);
+  --shadow-lg:  0 12px 40px rgba(0,0,0,0.12);
+}
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+body {
+  background: linear-gradient(135deg, var(--background-start) 0%, var(--background-end) 100%);
+  color: var(--text-primary);
+  min-height: 100vh;
+  font-family: var(--font-battambang), 'Khmer OS Battambang', sans-serif;
+  overflow-x: hidden;
+}
+
+/* Ambient glows for dark pages */
+body::before,
+body::after {
+  content: '';
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(120px);
+  z-index: -1;
+  pointer-events: none;
+}
+body::before {
+  top: -15%;
+  left: -10%;
+  width: 520px;
+  height: 520px;
+  background: rgba(99, 102, 241, 0.18);
+}
+body::after {
+  bottom: -15%;
+  right: -8%;
+  width: 640px;
+  height: 640px;
+  background: rgba(139, 92, 246, 0.14);
+}
+
+/* ── Glass utility (login page, dark modals) ── */
+.glass-panel {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius: 20px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+}
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  padding: 24px;
+  transition: transform 0.3s ease, background 0.3s ease, border-color 0.3s ease;
+}
+.glass-card:hover {
+  transform: translateY(-4px);
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+/* ── Animations ── */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: none; }
+}
+.animate-fade-in {
+  /* `backwards` (not `both`): once the animation finishes, the element must fall back to
+     its natural `transform: none`. A filled `forwards`/`both` animation keeps the computed
+     transform as `matrix(1,0,0,1,0,0)` instead of the literal `none`, which establishes a
+     containing block for `position: fixed` descendants — trapping modals inside this box
+     instead of letting them cover the viewport. */
+  animation: fadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+@keyframes floatAnim {
+  0% { transform: translateY(0px) rotate(-5deg); }
+  50% { transform: translateY(-15px) rotate(5deg); }
+  100% { transform: translateY(0px) rotate(-5deg); }
+}
+.animate-float {
+  animation: floatAnim 3s ease-in-out infinite;
+}
+.animate-float-delayed {
+  animation: floatAnim 3s ease-in-out infinite;
+  animation-delay: 1.5s;
+}
+
+/* ── Primary button ── */
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  padding: 10px 22px;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.12s ease, box-shadow 0.15s ease;
+  box-shadow: 0 2px 10px rgba(99, 102, 241, 0.28);
+  font-family: inherit;
+  white-space: nowrap;
+}
+.btn-primary:hover {
+  background: var(--accent-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.38);
+}
+.btn-primary:active {
+  transform: translateY(0);
+}
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ── Secondary button ── */
+.btn-secondary {
+  background: #f8fafc;
+  color: var(--color-text-primary);
+  border: 1.5px solid var(--color-border);
+  padding: 10px 22px;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.12s ease;
+  font-family: inherit;
+  white-space: nowrap;
+}
+.btn-secondary:hover {
+  background: #f1f5f9;
+  border-color: var(--color-border-strong);
+  transform: translateY(-1px);
+}
+.btn-secondary:active {
+  transform: translateY(0);
+}
+.btn-secondary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ── Outline Accent button ── */
+.btn-outline {
+  background: transparent;
+  color: var(--color-accent);
+  border: 1.5px solid var(--color-accent);
+  padding: 10px 22px;
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.12s ease;
+  font-family: inherit;
+  white-space: nowrap;
+}
+.btn-outline:hover {
+  background: var(--color-accent-light);
+  transform: translateY(-1px);
+}
+.btn-outline:active {
+  transform: translateY(0);
+}
+.btn-outline:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ── Typography (dark pages) ── */
+h1, h2, h3, h4 {
+  font-family: var(--font-moul), 'Khmer OS Moul', serif;
+  font-weight: normal;
+  letter-spacing: 0.02em;
+  color: #fff;
+  line-height: 1.5;
+}
+
+.text-gradient {
+  background: linear-gradient(135deg, #818cf8, #c084fc);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}

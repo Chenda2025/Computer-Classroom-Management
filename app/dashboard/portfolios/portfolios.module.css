@@ -1,0 +1,553 @@
+/* ── Student folder grid ── */
+.folderGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+.folderCard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 18px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  text-decoration: none;
+  color: inherit;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  animation: portfolioCardEntrance 0.32s cubic-bezier(0.16, 1, 0.3, 1) both;
+  transition: box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+}
+
+.folderCard::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--card-accent, var(--color-accent)), var(--card-accent-light, var(--card-accent)));
+}
+
+.folderCard:hover {
+  box-shadow: 0 20px 44px -10px rgba(0, 0, 0, 0.16), 0 6px 16px rgba(0, 0, 0, 0.06);
+  transform: translateY(-5px);
+  border-color: var(--card-accent, var(--color-accent));
+}
+
+.folderCard:hover .studentAvatar {
+  transform: scale(1.08) rotate(-4deg);
+  box-shadow: 0 10px 22px -6px rgba(0, 0, 0, 0.32);
+}
+
+.folderMeta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 14px;
+  border-top: 1px solid var(--color-border);
+}
+
+.folderCountBadge {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--card-accent, var(--color-accent));
+  background: color-mix(in srgb, var(--card-accent, var(--color-accent)) 14%, transparent);
+  padding: 5px 12px;
+  border-radius: 20px;
+}
+
+.openHint {
+  font-size: 0.76rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  opacity: 0;
+  transform: translateX(-6px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.folderCard:hover .openHint {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* ── Upload-mode toggle (add work modal) ── */
+.modeToggle {
+  display: flex;
+  gap: 8px;
+}
+
+.modeBtn {
+  flex: 1;
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1.5px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.modeBtn:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.modeBtnActive {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: #fff;
+}
+
+.modeBtnActive:hover {
+  color: #fff;
+}
+
+/* ── Upload drop-zone (add work modal) ── */
+.uploadZone {
+  margin-top: 12px;
+  border: 1.5px dashed var(--color-border);
+  border-radius: 14px;
+  background: #f8fafc;
+  transition: border-color 0.18s ease, background 0.18s ease;
+}
+
+.uploadZoneActive {
+  border-color: var(--color-accent);
+  background: var(--color-accent-light);
+}
+
+.uploadZoneBusy {
+  opacity: 0.75;
+}
+
+.uploadPrompt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 30px 20px;
+  cursor: pointer;
+  text-align: center;
+}
+
+.uploadIcon {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  background: var(--color-accent-light);
+  color: var(--color-accent);
+  margin-bottom: 4px;
+}
+
+.uploadPromptTitle {
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.uploadPromptHint {
+  font-size: 0.76rem;
+  color: var(--color-text-muted);
+}
+
+.uploadResult {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 22px 20px;
+}
+
+.uploadPreviewImg {
+  max-height: 150px;
+  max-width: 100%;
+  border-radius: 10px;
+  border: 1px solid var(--color-border);
+  object-fit: cover;
+}
+
+.uploadFileIcon {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.6rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+}
+
+.uploadFileName {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.uploadActionsRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.uploadGhostBtn {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--color-accent);
+  background: var(--color-accent-light);
+  border: none;
+  padding: 6px 14px;
+  border-radius: 20px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: filter 0.15s ease;
+}
+
+.uploadGhostBtn:hover {
+  filter: brightness(0.96);
+}
+
+.uploadGhostBtnDanger {
+  display: inline-flex;
+  align-items: center;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: #dc2626;
+  background: var(--color-danger-bg);
+  border: none;
+  padding: 6px 14px;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: filter 0.15s ease;
+}
+
+.uploadGhostBtnDanger:hover {
+  filter: brightness(0.96);
+}
+
+/* ── Student picker (modal) ── */
+.pickerList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 360px;
+  overflow-y: auto;
+  padding: 4px 24px 24px;
+}
+
+.pickerItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.pickerItem:hover {
+  background: #f8fafc;
+  border-color: var(--color-border);
+}
+
+.pickerAvatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+  flex-shrink: 0;
+}
+
+.pickerArrow {
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  flex-shrink: 0;
+}
+
+/* ── Folder back button & student header (detail view) ── */
+.backBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+
+.backBtn:hover {
+  background: var(--color-accent-light);
+  border-color: rgba(99, 102, 241, 0.3);
+  color: var(--color-accent);
+}
+
+.studentHeader {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.studentHeaderAvatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+  box-shadow: 0 6px 16px -4px rgba(0, 0, 0, 0.28);
+  flex-shrink: 0;
+}
+
+/* ── Portfolio grid ── */
+.portfolioGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
+  gap: 18px;
+  margin-bottom: 32px;
+}
+
+@keyframes portfolioCardEntrance {
+  from { opacity: 0; transform: translateY(14px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* ── Portfolio card ── */
+.portfolioCard {
+  position: relative;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  animation: portfolioCardEntrance 0.32s cubic-bezier(0.16, 1, 0.3, 1) both;
+  transition: box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+}
+
+.portfolioCard::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--card-accent, var(--color-accent)), var(--card-accent-light, var(--card-accent)));
+}
+
+.portfolioCard:hover {
+  box-shadow: 0 20px 44px -10px rgba(0, 0, 0, 0.16), 0 6px 16px rgba(0, 0, 0, 0.06);
+  transform: translateY(-5px);
+  border-color: var(--card-accent, var(--color-accent));
+}
+
+.cardBody {
+  padding: 20px 18px 16px;
+  flex: 1;
+}
+
+.cardTopRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.studentAvatar {
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+  box-shadow: 0 6px 16px -4px rgba(0, 0, 0, 0.28);
+  flex-shrink: 0;
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.25s ease;
+}
+
+.portfolioCard:hover .studentAvatar {
+  transform: scale(1.08) rotate(-4deg);
+  box-shadow: 0 10px 22px -6px rgba(0, 0, 0, 0.32);
+}
+
+.studentTitleWrap {
+  flex: 1;
+  min-width: 0;
+}
+
+.studentName {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.studentCode {
+  display: inline-block;
+  margin-top: 5px;
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+  background: #f1f5f9;
+  padding: 2px 9px;
+  border-radius: 20px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
+.portfolioInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  background: #f8fafc;
+  border-radius: 12px;
+  margin-bottom: 14px;
+}
+
+.portfolioTitle {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.courseTag {
+  display: inline-flex;
+  align-self: flex-start;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--card-accent, var(--color-accent));
+  background: color-mix(in srgb, var(--card-accent, var(--color-accent)) 14%, transparent);
+  padding: 2px 10px;
+  border-radius: 20px;
+  letter-spacing: 0.02em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.fileLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--card-accent, var(--color-accent));
+  text-decoration: none;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--card-accent, var(--color-accent));
+  transition: background 0.15s ease, color 0.15s ease, transform 0.12s ease;
+}
+
+.fileLink:hover {
+  background: var(--card-accent, var(--color-accent));
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+.noFile {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px dashed var(--color-border);
+}
+
+/* Card actions */
+.cardActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 7px;
+  padding: 12px;
+  border-top: 1px solid var(--color-border);
+}
+
+.iconBtn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  transition: background 0.15s, border-color 0.15s, transform 0.15s ease, box-shadow 0.15s ease;
+  flex-shrink: 0;
+}
+
+.iconBtn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.1);
+}
+
+.deleteBtn {
+  color: #dc2626;
+  background: var(--color-danger-bg);
+  border-color: rgba(239, 68, 68, 0.16);
+}
+
+.deleteBtn:hover {
+  background: rgba(239, 68, 68, 0.14);
+  border-color: rgba(239, 68, 68, 0.34);
+}

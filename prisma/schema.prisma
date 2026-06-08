@@ -1,0 +1,351 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  name      String
+  role      String   @default("MONITOR")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Student {
+  id           String        @id @default(uuid())
+  studentCode  String        @unique
+  name         String
+  phone        String?
+  photoUrl     String?
+  gender       String?
+  dateOfBirth  String?
+  nationality  String?
+  wat          String?
+  kuti         String?
+  kutiFloor    String?
+  kutiHead     String?
+  kutiNumber   String?
+  parentName   String?
+  parentPhone    String?
+  academicYear   String?
+  educationLevel String?
+  grade          String?
+  notes          String?
+  enrollments  Enrollment[]
+  attendances  Attendance[]
+  results      ExamResult[]
+  portfolios   Portfolio[]
+  examRequests ExamRequest[]
+  examParticipations ExamParticipation[]
+  certificates Certificate[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+model Teacher {
+  id          String   @id @default(uuid())
+  teacherCode String   @unique
+  name        String
+  phone       String?
+  email       String?
+  gender      String?
+  dateOfBirth String?
+  nationality String?
+  subject     String?
+  photoUrl    String?
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Pagoda {
+  id        String   @id @default(uuid())
+  name      String
+  province  String?
+  district  String?
+  commune   String?
+  village   String?
+  phone     String?
+  notes     String?
+  kutis     Kuti[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Kuti {
+  id        String       @id @default(uuid())
+  name      String
+  floor     String?
+  number    String?
+  headId    String?
+  subHeadId String?
+  head      HeadMonk?    @relation("KutiHead", fields: [headId], references: [id], onDelete: SetNull)
+  subHead   SubHeadMonk? @relation("KutiSubHead", fields: [subHeadId], references: [id], onDelete: SetNull)
+  notes     String?
+  pagodaId  String
+  pagoda    Pagoda       @relation(fields: [pagodaId], references: [id], onDelete: Cascade)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+}
+
+model HeadMonk {
+  id        String   @id @default(uuid())
+  name      String
+  age       String?
+  gender    String?
+  phone     String?
+  kutis     Kuti[]   @relation("KutiHead")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model SubHeadMonk {
+  id        String   @id @default(uuid())
+  name      String
+  age       String?
+  gender    String?
+  phone     String?
+  kutis     Kuti[]   @relation("KutiSubHead")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Course {
+  id          String       @id @default(uuid())
+  name        String
+  description String?
+  order       Int          @default(0)
+  enrollments Enrollment[]
+  lessonPlans LessonPlan[]
+  exams       Exam[]
+  portfolios  Portfolio[]
+  schedules   Schedule[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+}
+
+model Enrollment {
+  id        String   @id @default(uuid())
+  studentId String
+  courseId  String
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([studentId, courseId])
+}
+
+model LessonPlan {
+  id        String   @id @default(uuid())
+  title     String
+  content   String
+  date      DateTime
+  courseId  String
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Schedule {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  startDate   String
+  endDate     String?
+  startTime   String?
+  endTime     String?
+  type        String   @default("CLASS")
+  courseId    String?
+  course      Course?  @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Attendance {
+  id        String   @id @default(uuid())
+  date      DateTime
+  status    String
+  studentId String
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Portfolio {
+  id        String   @id @default(uuid())
+  title     String
+  fileUrl   String
+  studentId String
+  courseId  String
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Exam {
+  id           String        @id @default(uuid())
+  title        String
+  type         String        @default("OFFLINE")
+  courseId     String
+  course       Course        @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  questions    Question[]
+  results      ExamResult[]
+  examRequests ExamRequest[]
+  sessions     ExamSession[]
+  passingScore Float         @default(60)
+  durationPerQuestion Int?
+  isActive     Boolean       @default(true)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+model Question {
+  id            String   @id @default(uuid())
+  text          String
+  options       String
+  correctAnswer String
+  timeLimitSeconds Int             @default(60)
+  points           Float           @default(10)
+  type             String          @default("SINGLE")
+  order            Int             @default(0)
+  examId        String
+  exam          Exam     @relation(fields: [examId], references: [id], onDelete: Cascade)
+  studentAnswers StudentAnswer[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model ExamResult {
+  id        String   @id @default(uuid())
+  score     Float
+  promoted  Boolean  @default(false)
+  studentId String
+  examId    String
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  exam      Exam     @relation(fields: [examId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([studentId, examId])
+}
+
+model ExamRequest {
+  id        String   @id @default(uuid())
+  studentId String
+  examId    String
+  status    String   @default("PENDING")
+  note      String?
+  student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  exam      Exam     @relation(fields: [examId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ExamSession {
+  id             String              @id @default(uuid())
+  examCode       String              @unique
+  status         String              @default("LOBBY")
+  examId         String
+  exam           Exam                @relation(fields: [examId], references: [id], onDelete: Cascade)
+  participations ExamParticipation[]
+  startedAt      DateTime?
+  endedAt        DateTime?
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+}
+
+model ExamParticipation {
+  id           String          @id @default(uuid())
+  status       String          @default("PENDING")
+  currentScore Float           @default(0)
+  sessionId    String
+  studentId    String
+  session      ExamSession     @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  student      Student         @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  answers      StudentAnswer[]
+  joinedAt     DateTime        @default(now())
+  finishedAt   DateTime?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  @@unique([sessionId, studentId])
+}
+
+model StudentAnswer {
+  id              String            @id @default(uuid())
+  participationId String
+  questionId      String
+  selectedOptions String
+  earnedPoints    Float             @default(0)
+  participation   ExamParticipation @relation(fields: [participationId], references: [id], onDelete: Cascade)
+  question        Question          @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  answeredAt      DateTime          @default(now())
+
+  @@unique([participationId, questionId])
+}
+
+model Certificate {
+  id          String   @id @default(uuid())
+  title       String
+  issuedDate  String
+  description String?
+  studentId   String
+  student     Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model District {
+  id            String   @id @default(uuid())
+  provinceCode  String
+  districtCode  String   @unique
+  districtKh    String
+  districtEn    String
+  createdAt     DateTime @default(now())
+}
+
+model SchoolClass {
+  id             String   @id @default(uuid())
+  classCode      String   @unique
+  name           String
+  academicYear   String?
+  educationLevel String?
+  grade          String?
+  maxStudents    Int?
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model AcademicYear {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model EducationLevel {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  grades    Grade[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Grade {
+  id               String         @id @default(uuid())
+  name             String
+  educationLevelId String
+  educationLevel   EducationLevel @relation(fields: [educationLevelId], references: [id], onDelete: Cascade)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@unique([name, educationLevelId])
+}
