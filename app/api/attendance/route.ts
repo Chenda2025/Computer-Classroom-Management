@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '../../../lib/prisma';
 import { getSession } from '../../../lib/auth';
+import { sendTelegramNotification } from '../../../lib/telegram';
 
 export async function GET(request: Request) {
   const session = await getSession();
@@ -33,10 +34,10 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  if (session.role !== 'ADMIN') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  if (session.role !== 'ADMIN' && session.role !== 'MONITOR') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   const body = await request.json();
-  const { date, records } = body;
+  const { date, records, courseName } = body;
   if (!date || !Array.isArray(records)) {
     return NextResponse.json({ error: 'ទិន្នន័យមិនត្រឹមត្រូវ' }, { status: 400 });
   }
@@ -59,6 +60,27 @@ export async function POST(request: Request) {
       status: r.status,
     })),
   });
+
+  try {
+    const present = records.filter(r => r.status === 'PRESENT').length;
+    const absent = records.filter(r => r.status === 'ABSENT').length;
+    const permission = records.filter(r => r.status === 'PERMISSION').length;
+    const late = records.filter(r => r.status === 'LATE').length;
+    
+    const msg = `📢 <b>[ATTENDANCE REPORT]</b>\n\n`
+      + `📅 កាលបរិច្ឆេទ: <b>${date}</b>\n`
+      + `📚 ថ្នាក់/វគ្គ: <b>${courseName || 'N/A'}</b>\n`
+      + `👤 អ្នកកត់ត្រា: <b>${session.username}</b> (${session.role})\n\n`
+      + `✅ វត្តមាន: <b>${present}</b> នាក់\n`
+      + `❌ អវត្តមាន: <b>${absent}</b> នាក់\n`
+      + `📝 ច្បាប់: <b>${permission}</b> នាក់\n`
+      + `⏳ យឺត: <b>${late}</b> នាក់\n\n`
+      + `👥 សរុប: <b>${records.length}</b> នាក់`;
+      
+    await sendTelegramNotification(msg);
+  } catch (error) {
+    console.error('Failed to send telegram notification', error);
+  }
 
   return NextResponse.json({ count: created.count });
 }
