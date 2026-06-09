@@ -7,7 +7,7 @@ export default async function PortfoliosPage() {
   const session = await getSession();
   if (!session) redirect('/');
 
-  const [students, allStudents] = await Promise.all([
+  const [students, courses] = await Promise.all([
     prisma.student.findMany({
       where: { portfolios: { some: {} } },
       orderBy: { name: 'asc' },
@@ -16,9 +16,17 @@ export default async function PortfoliosPage() {
         _count: { select: { portfolios: true } },
       },
     }),
-    prisma.student.findMany({
-      orderBy: { name: 'asc' },
-      select: { id: true, studentCode: true, name: true, photoUrl: true },
+    prisma.course.findMany({
+      orderBy: { order: 'asc' },
+      select: {
+        id: true,
+        name: true,
+        enrollments: {
+          select: {
+            student: { select: { id: true, studentCode: true, name: true, photoUrl: true } },
+          },
+        },
+      },
     }),
   ]);
 
@@ -28,7 +36,11 @@ export default async function PortfoliosPage() {
         id: s.id, studentCode: s.studentCode, name: s.name, photoUrl: s.photoUrl,
         portfolioCount: s._count.portfolios,
       }))}
-      allStudents={allStudents}
+      courses={courses.map(c => ({
+        id: c.id,
+        name: c.name,
+        students: c.enrollments.map(e => e.student),
+      }))}
       userRole={session.role as string}
     />
   );

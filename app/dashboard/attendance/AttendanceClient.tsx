@@ -30,6 +30,24 @@ interface Props {
   userRole: string;
 }
 
+type Period = '15D' | '1M' | '1Y';
+
+const PERIOD_OPTIONS: { value: Period; label: string }[] = [
+  { value: '15D', label: '15 ថ្ងៃ' },
+  { value: '1M',  label: '1 ខែ' },
+  { value: '1Y',  label: '1 ឆ្នាំ' },
+];
+
+function periodRange(period: Period, anchor: string): { from: string; to: string } {
+  const to = anchor;
+  const d = new Date(anchor);
+  if (period === '15D') d.setDate(d.getDate() - 14);
+  else if (period === '1M') d.setMonth(d.getMonth() - 1);
+  else d.setFullYear(d.getFullYear() - 1);
+  const from = d.toISOString().slice(0, 10);
+  return { from, to };
+}
+
 const PAGE_SIZE = 15;
 const MONTHLY_LIMIT = 3;
 
@@ -81,6 +99,7 @@ export default function AttendanceClient({ courses, today, userRole }: Props) {
   const [canSave, setCanSave] = useState(isAdmin);
 
   const [date, setDate] = useState(today);
+  const [period, setPeriod] = useState<Period>('1M');
   const [courseSearch, setCourseSearch] = useState('');
   const [selectedCourse, setSelectedCourse] = useState<CourseSummary | null>(null);
   const [activeTab, setActiveTab] = useState<'RECORD' | 'ABSENT_ALERT' | 'PERMISSION_ALERT'>('RECORD');
@@ -177,9 +196,10 @@ export default function AttendanceClient({ courses, today, userRole }: Props) {
     }
   }, []);
 
-  const loadMonthlyCounts = useCallback(async (yearMonth: string, students: RosterStudent[]) => {
+  const loadMonthlyCounts = useCallback(async (anchor: string, p: Period, students: RosterStudent[]) => {
     try {
-      const res = await fetch(`/api/attendance?month=${yearMonth}`);
+      const { from, to } = periodRange(p, anchor);
+      const res = await fetch(`/api/attendance?from=${from}&to=${to}`);
       const data = await res.json();
       const ids = new Set(students.map(s => s.id));
       const m: Record<string, { absent: number; permission: number }> = {};
@@ -218,7 +238,7 @@ export default function AttendanceClient({ courses, today, userRole }: Props) {
       setRoster(students);
       await Promise.all([
         loadAttendance(date, students),
-        loadMonthlyCounts(date.slice(0, 7), students),
+        loadMonthlyCounts(date, period, students),
       ]);
     } finally {
       setRosterLoading(false);
@@ -275,7 +295,12 @@ export default function AttendanceClient({ courses, today, userRole }: Props) {
     setDate(d);
     setSaved(false);
     loadAttendance(d, roster);
-    loadMonthlyCounts(d.slice(0, 7), roster);
+    loadMonthlyCounts(d, period, roster);
+  };
+
+  const handlePeriodChange = (p: Period) => {
+    setPeriod(p);
+    if (roster.length > 0) loadMonthlyCounts(date, p, roster);
   };
 
   const handleSave = async () => {
@@ -293,7 +318,7 @@ export default function AttendanceClient({ courses, today, userRole }: Props) {
       });
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
-      loadMonthlyCounts(date.slice(0, 7), roster);
+      loadMonthlyCounts(date, period, roster);
     } finally {
       setSaving(false);
     }
@@ -404,6 +429,16 @@ export default function AttendanceClient({ courses, today, userRole }: Props) {
             value={date}
             onChange={e => handleDateChange(e.target.value)}
           />
+          <select
+            className={att.dateInput}
+            value={period}
+            onChange={e => handlePeriodChange(e.target.value as Period)}
+            style={{ minWidth: 110 }}
+          >
+            {PERIOD_OPTIONS.map(o => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </select>
           {(isAdmin || isMonitor) && (
             <>
               <button
@@ -497,14 +532,14 @@ export default function AttendanceClient({ courses, today, userRole }: Props) {
               style={{ fontFamily: 'var(--font-battambang), "Khmer OS Battambang", sans-serif', padding: '0.5rem 1rem', background: activeTab === 'ABSENT_ALERT' ? '#fef2f2' : '#f1f5f9', color: activeTab === 'ABSENT_ALERT' ? '#ef4444' : '#64748b', border: 'none', borderRadius: '0.5rem', fontWeight: 500, cursor: 'pointer' }}
               onClick={() => { setActiveTab('ABSENT_ALERT'); setPage(1); }}
             >
-              ⚠ អវត្តមាន &gt; ៣ ដង
+              ⚠ អវត្តមាន &gt; ៣ ដង ({PERIOD_OPTIONS.find(o => o.value === period)?.label})
             </button>
             <button 
               className={`${att.tabBtn} ${activeTab === 'PERMISSION_ALERT' ? att.tabActive : ''}`}
               style={{ fontFamily: 'var(--font-battambang), "Khmer OS Battambang", sans-serif', padding: '0.5rem 1rem', background: activeTab === 'PERMISSION_ALERT' ? '#fffbeb' : '#f1f5f9', color: activeTab === 'PERMISSION_ALERT' ? '#f59e0b' : '#64748b', border: 'none', borderRadius: '0.5rem', fontWeight: 500, cursor: 'pointer' }}
               onClick={() => { setActiveTab('PERMISSION_ALERT'); setPage(1); }}
             >
-              ⚠ ច្បាប់ &gt; ៣ ដង
+              ⚠ ច្បាប់ &gt; ៣ ដង ({PERIOD_OPTIONS.find(o => o.value === period)?.label})
             </button>
           </div>
 
@@ -576,7 +611,7 @@ export default function AttendanceClient({ courses, today, userRole }: Props) {
                             {alert && (
                               <span
                                 className={att.alertBadge}
-                                title={`ខែនេះ — អវត្តមាន ${alert.absent} ដង • ច្បាប់ ${alert.permission} ដង (កំណត់ត្រឹម ${MONTHLY_LIMIT} ក្នុងមួយខែ)`}
+                                title={`${PERIOD_OPTIONS.find(o => o.value === period)?.label} — អវត្តមាន ${alert.absent} ដង • ច្បាប់ ${alert.permission} ដង (កំណត់ ${MONTHLY_LIMIT} ដង)`}
                               >
                                 ⚠ លើសកំណត់
                               </span>

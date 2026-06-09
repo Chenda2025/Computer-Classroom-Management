@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import styles from '../../../students/students.module.css';
 
 export default function QuestionsClient({ exam }: { exam: any }) {
@@ -43,8 +43,13 @@ export default function QuestionsClient({ exam }: { exam: any }) {
     setTimeUnit(u);
   };
 
-  const handleGenerateText = () => {
-    const khmerWords = ['សាលារៀន', 'កម្ពុជា', 'សិស្ស', 'គ្រូបង្រៀន', 'ចំណេះដឹង', 'សៀវភៅ', 'ប៊ិច', 'តុ', 'ក្ដារខៀន', 'មិត្តភក្តិ', 'ការសិក្សា', 'កុំព្យូទ័រ', 'វាយអត្ថបទ', 'អនាគត', 'ពន្លឺ', 'ជោគជ័យ', 'ខិតខំ', 'ប្រឹងប្រែង', 'ប្រទេស', 'ជាតិ', 'បច្ចេកវិទ្យា', 'សុភមង្គល', 'សន្តិភាព', 'អភិវឌ្ឍន៍', 'ស្រឡាញ់'];
+  const handleGenerateText = useCallback(() => {
+    const khmerWords = [
+      'សួស្តី', 'កម្ពុជា', 'សាលា', 'រៀន', 'សរសេរ', 'អាន', 'គណិតវិទ្យា', 'វិទ្យាសាស្ត្រ', 
+      'គ្រូបង្រៀន', 'សិស្ស', 'សៀវភៅ', 'ប៊ិច', 'តុ', 'កៅអី', 'ថ្នាក់រៀន', 'ប្រឡង', 
+      'កុំព្យូទ័រ', 'បច្ចេកវិទ្យា', 'ចំណេះដឹង', 'អនាគត', 'ការងារ', 'ជោគជ័យ', 'ព្យាយាម',
+      'អត់ធ្មត់', 'វិន័យ', 'សីលធម៌', 'បញ្ញា', 'សុខភាព', 'កីឡា', 'សិល្បៈ', 'វប្បធម៌'
+    ];
     const englishWords = ['school', 'cambodia', 'student', 'teacher', 'knowledge', 'book', 'pen', 'table', 'whiteboard', 'friend', 'study', 'computer', 'typing', 'future', 'light', 'success', 'effort', 'nation', 'technology', 'happiness', 'peace', 'development', 'love', 'smart', 'world'];
 
     let source = [];
@@ -58,7 +63,15 @@ export default function QuestionsClient({ exam }: { exam: any }) {
       result.push(w);
     }
     setForm(prev => ({ ...prev, typingCustomText: result.join(' ') }));
-  };
+  }, [form.typingLang, form.typingLength]);
+
+  // Auto-generate text when in AUTO mode and typing options change
+  useEffect(() => {
+    if (modal && form.type === 'TYPING' && form.typingMode === 'AUTO') {
+      handleGenerateText();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modal, form.type, form.typingMode, form.typingLang, form.typingLength]);
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -75,10 +88,10 @@ export default function QuestionsClient({ exam }: { exam: any }) {
           const parsed = JSON.parse(saved);
           defaults = {
             ...EMPTY,
-            type: parsed.type || EMPTY.type,
+            type: isTypingCourse ? 'TYPING' : (parsed.type || EMPTY.type),
             timeLimitSeconds: parsed.timeLimitSeconds || EMPTY.timeLimitSeconds,
             points: parsed.points || EMPTY.points,
-            options: Array.isArray(parsed.options) ? parsed.options : EMPTY.options
+            options: (isTypingCourse || parsed.type === 'TYPING') ? [] : (Array.isArray(parsed.options) ? parsed.options : EMPTY.options)
           };
         }
       }
@@ -117,9 +130,9 @@ export default function QuestionsClient({ exam }: { exam: any }) {
     setForm({
       id: q.id,
       text: q.text,
-      type: q.type,
-      options: q.type === 'TYPING' ? [] : parsedOpts,
-      correctAnswer: q.type === 'TYPING' ? [] : parsedAns,
+      type: isTypingCourse ? 'TYPING' : q.type,
+      options: (isTypingCourse || q.type === 'TYPING') ? [] : parsedOpts,
+      correctAnswer: (isTypingCourse || q.type === 'TYPING') ? [] : parsedAns,
       timeLimitSeconds: q.timeLimitSeconds,
       points: q.points,
       typingLang: tLang,

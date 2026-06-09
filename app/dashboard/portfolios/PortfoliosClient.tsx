@@ -29,13 +29,15 @@ interface StudentFolder {
   portfolioCount: number;
 }
 interface StudentOption { id: string; studentCode: string; name: string; photoUrl?: string | null; }
-interface Props { students: StudentFolder[]; allStudents: StudentOption[]; userRole: string; }
+interface CourseOption { id: string; name: string; students: StudentOption[]; }
+interface Props { students: StudentFolder[]; courses: CourseOption[]; userRole: string; }
 
-export default function PortfoliosClient({ students, allStudents, userRole }: Props) {
+export default function PortfoliosClient({ students, courses, userRole }: Props) {
   const router = useRouter();
   const isAdmin = userRole === 'ADMIN';
   const [search, setSearch] = useState('');
   const [picker, setPicker] = useState(false);
+  const [selectedCourse, setSelectedCourse] = useState('');
   const [pickerSearch, setPickerSearch] = useState('');
 
   const filtered = useMemo(() => {
@@ -46,17 +48,22 @@ export default function PortfoliosClient({ students, allStudents, userRole }: Pr
     );
   }, [students, search]);
 
+  const courseStudents = useMemo(() => {
+    const course = courses.find(c => c.id === selectedCourse);
+    return course ? course.students : [];
+  }, [courses, selectedCourse]);
+
   const pickerFiltered = useMemo(() => {
     const q = pickerSearch.toLowerCase().trim();
-    if (!q) return allStudents;
-    return allStudents.filter(s =>
+    if (!q) return courseStudents;
+    return courseStudents.filter(s =>
       s.name.toLowerCase().includes(q) || s.studentCode.toLowerCase().includes(q)
     );
-  }, [allStudents, pickerSearch]);
+  }, [courseStudents, pickerSearch]);
 
   const totalWorks = useMemo(() => students.reduce((sum, s) => sum + s.portfolioCount, 0), [students]);
 
-  const openPicker = () => { setPickerSearch(''); setPicker(true); };
+  const openPicker = () => { setSelectedCourse(''); setPickerSearch(''); setPicker(true); };
   const choosePickerStudent = (id: string) => { setPicker(false); router.push(`/dashboard/portfolios/${id}`); };
 
   return (
@@ -128,33 +135,56 @@ export default function PortfoliosClient({ students, allStudents, userRole }: Pr
               <h3>ជ្រើសរើសសិស្ស</h3>
               <button className={styles.closeBtn} onClick={() => setPicker(false)}>✕</button>
             </div>
-            <div className={styles.formGroup} style={{ padding: '0 24px' }}>
-              <input type="text" className={styles.input} autoFocus placeholder="ស្វែងរកតាមឈ្មោះ ឬកូដ..."
-                value={pickerSearch} onChange={e => setPickerSearch(e.target.value)} />
+            <div style={{ padding: '0 24px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <div className={styles.formGroup}>
+                <label className={styles.label}>មុខវិជ្ជា</label>
+                <select
+                  className={styles.input}
+                  value={selectedCourse}
+                  onChange={e => { setSelectedCourse(e.target.value); setPickerSearch(''); }}
+                  autoFocus
+                >
+                  <option value="">-- ជ្រើសរើសមុខវិជ្ជា --</option>
+                  {courses.map(c => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
+              {selectedCourse && (
+                <div className={styles.formGroup}>
+                  <label className={styles.label}>ស្វែងរកសិស្ស</label>
+                  <input type="text" className={styles.input} placeholder="ស្វែងរកតាមឈ្មោះ ឬកូដ..."
+                    value={pickerSearch} onChange={e => setPickerSearch(e.target.value)} />
+                </div>
+              )}
             </div>
-            <div className={cardStyles.pickerList}>
-              {pickerFiltered.length === 0 ? (
-                <p style={{ textAlign: 'center', color: 'var(--color-text-muted)', padding: '20px 0' }}>រកមិនឃើញសិស្ស</p>
-              ) : pickerFiltered.map(s => {
-                const accent = accentFor(s.id);
-                return (
-                  <button key={s.id} type="button" className={cardStyles.pickerItem} onClick={() => choosePickerStudent(s.id)}>
-                    {s.photoUrl ? (
-                      <img src={s.photoUrl} alt={s.name} className={cardStyles.pickerAvatar} style={{ objectFit: 'cover' }} />
-                    ) : (
-                      <div className={cardStyles.pickerAvatar} style={{ background: `linear-gradient(135deg, ${accent.color}, ${accent.light})` }}>
-                        {initials(s.name)}
+            {selectedCourse && (
+              <div className={cardStyles.pickerList}>
+                {pickerFiltered.length === 0 ? (
+                  <p style={{ textAlign: 'center', color: 'var(--color-text-muted)', padding: '20px 0' }}>
+                    {pickerSearch ? 'រកមិនឃើញសិស្ស' : 'មិនមានសិស្សក្នុងមុខវិជ្ជានេះ'}
+                  </p>
+                ) : pickerFiltered.map(s => {
+                  const accent = accentFor(s.id);
+                  return (
+                    <button key={s.id} type="button" className={cardStyles.pickerItem} onClick={() => choosePickerStudent(s.id)}>
+                      {s.photoUrl ? (
+                        <img src={s.photoUrl} alt={s.name} className={cardStyles.pickerAvatar} style={{ objectFit: 'cover' }} />
+                      ) : (
+                        <div className={cardStyles.pickerAvatar} style={{ background: `linear-gradient(135deg, ${accent.color}, ${accent.light})` }}>
+                          {initials(s.name)}
+                        </div>
+                      )}
+                      <div className={cardStyles.studentTitleWrap}>
+                        <div className={cardStyles.studentName}>{s.name}</div>
+                        <span className={cardStyles.studentCode}>{s.studentCode}</span>
                       </div>
-                    )}
-                    <div className={cardStyles.studentTitleWrap}>
-                      <div className={cardStyles.studentName}>{s.name}</div>
-                      <span className={cardStyles.studentCode}>{s.studentCode}</span>
-                    </div>
-                    <span className={cardStyles.pickerArrow}>→</span>
-                  </button>
-                );
-              })}
-            </div>
+                      <span className={cardStyles.pickerArrow}>→</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
       )}

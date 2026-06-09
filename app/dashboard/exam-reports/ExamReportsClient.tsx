@@ -21,6 +21,14 @@ function daysLeft(createdAt: string, retentionDays: number) {
   return Math.max(0, Math.ceil(retentionDays - ageDays));
 }
 
+function getGrade(pts: number) {
+  if (pts < 60) return { label: 'ធ្លាក់', color: '#ef4444' };
+  if (pts < 70) return { label: 'មធ្យម', color: '#f59e0b' };
+  if (pts < 80) return { label: 'ល្អបង្គួរ', color: '#3b82f6' };
+  if (pts < 90) return { label: 'ល្អ', color: '#8b5cf6' };
+  return { label: 'ល្អណាស់', color: '#10b981' };
+}
+
 export default function ExamReportsClient({ initialResults, retentionDays, userRole }: Props) {
   const canExport = userRole === 'ADMIN' || userRole === 'MONITOR';
   const [search, setSearch] = useState('');
@@ -102,7 +110,7 @@ export default function ExamReportsClient({ initialResults, retentionDays, userR
             <thead className={styles.thead}>
               <tr>
                 <th>#</th><th>សិស្ស</th><th>ប្រឡង</th><th>វគ្គសិក្សា</th><th>ពិន្ទុ</th>
-                <th>លទ្ធផល</th><th>វគ្គបន្ទាប់</th><th>ថ្ងៃប្រឡង</th><th>ផុតកំណត់ក្នុង</th>
+                <th>និទ្ទេស</th><th>លទ្ធផល</th><th>វគ្គបន្ទាប់</th><th>ថ្ងៃប្រឡង</th><th>ផុតកំណត់ក្នុង</th>
               </tr>
             </thead>
             <tbody>
@@ -130,6 +138,11 @@ export default function ExamReportsClient({ initialResults, retentionDays, userR
                     <td className={styles.mutedCell}>{r.exam.title}</td>
                     <td className={styles.mutedCell}>{r.exam.course.name}</td>
                     <td><strong style={{ color: 'var(--color-accent)' }}>{r.score}</strong></td>
+                    <td>
+                      <span style={{ fontWeight: 600, color: getGrade(r.score).color }}>
+                        {getGrade(r.score).label}
+                      </span>
+                    </td>
                     <td>
                       <span style={{ padding: '4px 8px', borderRadius: 12, fontSize: '0.78rem', fontWeight: 600, background: passed ? '#dcfce7' : '#fee2e2', color: passed ? '#16a34a' : '#ef4444' }}>
                         {passed ? 'ជាប់' : 'ធ្លាក់'}

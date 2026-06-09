@@ -9,10 +9,14 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const date = searchParams.get('date');
   const month = searchParams.get('month');
+  const from = searchParams.get('from');
+  const to = searchParams.get('to');
 
   let where = {};
   if (date) {
     where = { date: { gte: new Date(`${date}T00:00:00.000Z`), lt: new Date(`${date}T23:59:59.999Z`) } };
+  } else if (from && to) {
+    where = { date: { gte: new Date(`${from}T00:00:00.000Z`), lte: new Date(`${to}T23:59:59.999Z`) } };
   } else if (month) {
     const [y, m] = month.split('-').map(Number);
     where = { date: { gte: new Date(Date.UTC(y, m - 1, 1)), lt: new Date(Date.UTC(y, m, 1)) } };
