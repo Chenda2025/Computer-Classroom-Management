@@ -167,46 +167,16 @@ export default function AttendanceClient({ courses, today, userRole }: Props) {
               window.speechSynthesis.speak(msg);
               const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
               
-              // Generate an iPhone-like Tri-Tone notification sound (E5, C#5, A4)
-              const sampleRate = ctx.sampleRate;
-              const buffer = ctx.createBuffer(1, sampleRate * 2, sampleRate); // 2 seconds long
-              const data = buffer.getChannelData(0);
-              
-              const freqs = [659.25, 554.37, 440.00];
-              const times = [0, 0.15, 0.3];
-              
-              for (let i = 0; i < data.length; i++) {
-                const t = i / sampleRate;
-                let val = 0;
-                
-                // Note 1 (E5)
-                if (t >= times[0] && t < times[1]) {
-                   val += Math.sin(2 * Math.PI * freqs[0] * (t - times[0])) * Math.exp(-(t - times[0]) * 15);
-                }
-                // Note 2 (C#5)
-                if (t >= times[1] && t < times[2]) {
-                   val += Math.sin(2 * Math.PI * freqs[1] * (t - times[1])) * Math.exp(-(t - times[1]) * 15);
-                }
-                // Note 3 (A4 - longer ring)
-                if (t >= times[2] && t < 1.0) {
-                   val += Math.sin(2 * Math.PI * freqs[2] * (t - times[2])) * Math.exp(-(t - times[2]) * 5);
-                }
-                
-                data[i] = val * 0.3; // Master volume
-              }
-              
-              const source = ctx.createBufferSource();
-              source.buffer = buffer;
-              source.loop = true; // Loops every 2 seconds
-              source.connect(ctx.destination);
-              source.start();
+              const audio = new Audio('/notification.mp3');
+              audio.loop = true;
+              audio.play().catch(e => console.error("Audio play failed:", e));
               
               // The browser alert blocks JS execution until OK is clicked
               alert(textMsg);
               
               // When user clicks OK, execution continues here, so we stop the sound
-              source.stop();
-              ctx.close();
+              audio.pause();
+              audio.currentTime = 0;
               window.speechSynthesis.cancel();
             }
           }
