@@ -166,13 +166,37 @@ export default function AttendanceClient({ courses, today, userRole }: Props) {
               msg.lang = 'km-KH';
               window.speechSynthesis.speak(msg);
               const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+              
+              // Create main oscillator
               const osc = ctx.createOscillator();
               osc.type = 'sine';
               osc.frequency.setValueAtTime(880, ctx.currentTime);
-              osc.connect(ctx.destination);
-              osc.start(); osc.stop(ctx.currentTime + 0.5);
               
+              // Create Gain node for beeping effect
+              const gainNode = ctx.createGain();
+              osc.connect(gainNode);
+              gainNode.connect(ctx.destination);
+              
+              // Create LFO to modulate gain (makes it beep 3 times a second)
+              const lfo = ctx.createOscillator();
+              lfo.type = 'square';
+              lfo.frequency.setValueAtTime(3, ctx.currentTime);
+              
+              // LFO outputs -1 to +1, we need 0 to 1
+              // We can just connect it to gain, LFO square will turn gain on/off
+              lfo.connect(gainNode.gain);
+              
+              osc.start();
+              lfo.start();
+              
+              // The browser alert blocks JS execution until OK is clicked
               alert(textMsg);
+              
+              // When user clicks OK, execution continues here, so we stop the sound
+              osc.stop();
+              lfo.stop();
+              ctx.close();
+              window.speechSynthesis.cancel();
             }
           }
         } catch (err) { console.error('Failed to check schedule for reminder', err); }
