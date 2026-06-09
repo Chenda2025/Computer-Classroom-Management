@@ -148,7 +148,7 @@ export default function AttendanceClient({ courses, today, userRole }: Props) {
       const h = now.getHours();
       const m = now.getMinutes();
 
-      const triggerAlert = async (textMsg: string, speakMsg: string) => {
+      const triggerAlert = async (textMsg: string) => {
         try {
           const res = await fetch('/api/schedules');
           if (res.ok) {
@@ -162,11 +162,6 @@ export default function AttendanceClient({ courses, today, userRole }: Props) {
             );
             
             if (!isHolidayOrCancelled) {
-              const msg = new SpeechSynthesisUtterance(speakMsg);
-              msg.lang = 'km-KH';
-              window.speechSynthesis.speak(msg);
-              const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-              
               const audio = new Audio('/notification.mp3');
               audio.loop = true;
               audio.play().catch(e => console.error("Audio play failed:", e));
@@ -177,7 +172,6 @@ export default function AttendanceClient({ courses, today, userRole }: Props) {
               // When user clicks OK, execution continues here, so we stop the sound
               audio.pause();
               audio.currentTime = 0;
-              window.speechSynthesis.cancel();
             }
           }
         } catch (err) { console.error('Failed to check schedule for reminder', err); }
@@ -185,12 +179,12 @@ export default function AttendanceClient({ courses, today, userRole }: Props) {
 
       if (h === 19 && m === 5 && !triggered05) {
         triggered05 = true;
-        triggerAlert('⏰ ម៉ោង ៧:០៥ ដល់ម៉ោងយកវត្តមានហើយ!', 'ដល់ម៉ោងយកវត្តមាន');
+        triggerAlert('⏰ ម៉ោង ៧:០៥ ដល់ម៉ោងយកវត្តមានហើយ!');
       }
       
       if (h === 19 && m === 20 && !triggered20) {
         triggered20 = true;
-        triggerAlert('⏰ ម៉ោង ៧:២០ នាទីហើយ! សូមប្រធានថ្នាក់រួសរាន់ស្រង់វត្តមាន ក្រែងលោភ្លេច!', 'សូមប្រធានថ្នាក់រួសរាន់ស្រង់វត្តមាន');
+        triggerAlert('⏰ ម៉ោង ៧:២០ នាទីហើយ! សូមប្រធានថ្នាក់រួសរាន់ស្រង់វត្តមាន ក្រែងលោភ្លេច!');
       }
 
       if (h !== 19 || m !== 5) triggered05 = false;
