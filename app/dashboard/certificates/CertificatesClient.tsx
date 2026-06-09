@@ -7,7 +7,7 @@ import ExportModal from './ExportModal';
 interface ExamResult { id: string; score: number; createdAt: string; exam: { course: { name: string }, questions?: { points: number }[] } }
 interface ExamParticipation { id: string; currentScore: number; createdAt: string; session: { exam: { course: { name: string }, questions?: { points: number }[] } }; }
 interface Enrollment { id: string; createdAt: string; course: { name: string }; }
-interface Student { id: string; studentCode: string; name: string; photoUrl?: string | null; gender?: string | null; dateOfBirth?: string | null; grade?: string | null; enrollments?: Enrollment[]; examParticipations?: ExamParticipation[]; results?: ExamResult[]; }
+interface Student { id: string; studentCode: string; name: string; nameEn?: string | null; photoUrl?: string | null; gender?: string | null; dateOfBirth?: string | null; grade?: string | null; enrollments?: Enrollment[]; examParticipations?: ExamParticipation[]; results?: ExamResult[]; }
 interface Certificate {
   id: string; title: string; issuedDate: string; description: string | null;
   studentId: string; student: Student; createdAt: string; updatedAt: string;

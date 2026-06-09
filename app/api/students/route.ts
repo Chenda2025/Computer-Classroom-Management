@@ -35,7 +35,7 @@ export async function POST(request: Request) {
   if (session.role !== 'ADMIN') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   try {
-    const { name, phone } = await request.json();
+    const { name, nameEn, phone } = await request.json();
     if (!name?.trim()) {
       return NextResponse.json({ error: 'ឈ្មោះសិស្សត្រូវការ' }, { status: 400 });
     }
@@ -52,7 +52,7 @@ export async function POST(request: Request) {
     const studentCode = `${prefix}${String(seq).padStart(3, '0')}`;
 
     const student = await prisma.student.create({
-      data: { studentCode, name: name.trim(), phone: phone?.trim() || null },
+      data: { studentCode, name: name.trim(), nameEn: nameEn?.trim() || null, phone: phone?.trim() || null },
       include: {
         _count: { select: { enrollments: true } },
         enrollments: { select: { courseId: true } },

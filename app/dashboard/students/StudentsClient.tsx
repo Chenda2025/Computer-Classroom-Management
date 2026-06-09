@@ -50,6 +50,7 @@ interface Student {
   id: string;
   studentCode: string;
   name: string;
+  nameEn: string | null;
   phone: string | null;
   photoUrl: string | null;
   gender: string | null;
@@ -79,10 +80,10 @@ interface Props {
 
 type Tab = 'basic' | 'residence' | 'bio';
 
-const EMPTY_ADD = { name: '', phone: '' };
+const EMPTY_ADD = { name: '', nameEn: '', phone: '' };
 
 const EMPTY_FULL = {
-  name: '', phone: '', photoUrl: '',
+  name: '', nameEn: '', phone: '', photoUrl: '',
   gender: '', dateOfBirth: '', nationality: '',
   wat: '', kuti: '', kutiFloor: '', kutiHead: '', kutiNumber: '',
   parentName: '', parentPhone: '',
@@ -400,6 +401,7 @@ export default function StudentsClient({ initialStudents, userRole }: Props) {
   const openEdit = (s: Student) => {
     setEditForm({
       name: s.name,
+      nameEn: s.nameEn ?? '',
       phone: s.phone ?? '',
       photoUrl: s.photoUrl ?? '',
       gender: s.gender ?? '',
@@ -835,12 +837,23 @@ export default function StudentsClient({ initialStudents, userRole }: Props) {
                 <label>ឈ្មោះពេញ *</label>
                 <input
                   type="text"
-                  placeholder="ឈ្មោះ និងនាមត្រកូល"
+                  placeholder="ឈ្មោះ និងនាមត្រកូល (ខ្មែរ)"
                   value={addForm.name}
                   onChange={e => setAddForm(p => ({ ...p, name: e.target.value }))}
                   className={styles.input}
                   required
                   autoFocus
+                />
+              </div>
+
+              <div className={styles.formGroup}>
+                <label>ឈ្មោះឡាតាំង</label>
+                <input
+                  type="text"
+                  placeholder="ឈ្មោះជាអក្សរអង់គ្លេស"
+                  value={addForm.nameEn}
+                  onChange={e => setAddForm(p => ({ ...p, nameEn: e.target.value }))}
+                  className={styles.input}
                 />
               </div>
 
@@ -941,11 +954,22 @@ export default function StudentsClient({ initialStudents, userRole }: Props) {
                     <div className={styles.formGroup}>
                       <label>ឈ្មោះពេញ *</label>
                       <input type="text" className={styles.input} required autoFocus
-                        placeholder="ឈ្មោះ និងនាមត្រកូល"
+                        placeholder="ឈ្មោះ និងនាមត្រកូល (ខ្មែរ)"
                         value={editForm.name}
                         onChange={e => setEditForm(v => f(v, 'name', e.target.value))}
                       />
                     </div>
+                    <div className={styles.formGroup}>
+                      <label>ឈ្មោះឡាតាំង</label>
+                      <input type="text" className={styles.input}
+                        placeholder="ឈ្មោះជាអក្សរអង់គ្លេស"
+                        value={editForm.nameEn}
+                        onChange={e => setEditForm(v => f(v, 'nameEn', e.target.value))}
+                      />
+                    </div>
+                  </div>
+
+                  <div className={styles.formRow}>
                     <div className={styles.formGroup}>
                       <label>លេខទូរស័ព្ទ</label>
                       <input type="tel" className={styles.input}

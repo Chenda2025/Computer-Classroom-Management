@@ -12,7 +12,7 @@ export async function PUT(request: Request, { params }: RouteContext) {
   const { id } = await params;
   try {
     const body = await request.json();
-    const { name, phone, gender, dateOfBirth, nationality, photoUrl,
+    const { name, nameEn, phone, gender, dateOfBirth, nationality, photoUrl,
             wat, kuti, kutiFloor, kutiHead, kutiNumber,
             parentName, parentPhone, academicYear, educationLevel, grade, notes } = body;
     if (!name?.trim()) {
@@ -22,6 +22,7 @@ export async function PUT(request: Request, { params }: RouteContext) {
       where: { id },
       data: {
         name: name.trim(),
+        nameEn: nameEn?.trim() || null,
         phone: phone?.trim() || null,
         photoUrl: photoUrl?.trim() || null,
         gender: gender?.trim() || null,

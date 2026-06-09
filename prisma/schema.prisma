@@ -8,20 +8,22 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  password  String
-  name      String
-  role      String   @default("MONITOR")
-  photoUrl  String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(uuid())
+  email       String   @unique
+  password    String
+  name        String
+  role        String   @default("MONITOR")
+  photoUrl    String?
+  permissions String   @default("{}")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model Student {
   id           String        @id @default(uuid())
   studentCode  String        @unique
   name         String
+  nameEn       String?
   phone        String?
   photoUrl     String?
   gender       String?
