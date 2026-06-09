@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 
-interface ExamParticipation { id: string; currentScore: number; createdAt: string; session: { exam: { course: { name: string } } }; }
+interface ExamParticipation { id: string; currentScore: number; createdAt: string; session: { exam: { course: { name: string }, questions?: { points: number }[] } }; }
 interface Enrollment { id: string; createdAt: string; course: { name: string }; }
 interface Student { id: string; studentCode: string; name: string; photoUrl?: string | null; gender?: string | null; dateOfBirth?: string | null; grade?: string | null; enrollments?: Enrollment[]; examParticipations?: ExamParticipation[]; }
 interface Certificate {
@@ -258,10 +258,19 @@ export default function CertificatePrintModal({ certificate, onClose }: Props) {
       let dynamicGrade = '';
       let dynamicGradeEn = '';
       if (score !== undefined) {
-        if (score >= 90) { dynamicGrade = 'ល្អណាស់'; dynamicGradeEn = 'Excellent'; }
-        else if (score >= 80) { dynamicGrade = 'ល្អ'; dynamicGradeEn = 'Very Good'; }
-        else if (score >= 70) { dynamicGrade = 'បង្គួរ'; dynamicGradeEn = 'Good'; }
-        else if (score >= 50) { dynamicGrade = 'មធ្យម'; dynamicGradeEn = 'Average'; }
+        let pct = score;
+        const questions = latestExam?.session?.exam?.questions;
+        if (questions && questions.length > 0) {
+          const totalPoints = questions.reduce((sum, q) => sum + q.points, 0);
+          if (totalPoints > 0) {
+            pct = Math.round((score / totalPoints) * 100);
+          }
+        }
+        
+        if (pct >= 90) { dynamicGrade = 'ល្អណាស់'; dynamicGradeEn = 'Excellent'; }
+        else if (pct >= 80) { dynamicGrade = 'ល្អ'; dynamicGradeEn = 'Very Good'; }
+        else if (pct >= 70) { dynamicGrade = 'បង្គួរ'; dynamicGradeEn = 'Good'; }
+        else if (pct >= 50) { dynamicGrade = 'មធ្យម'; dynamicGradeEn = 'Average'; }
         else { dynamicGrade = 'ធ្លាក់'; dynamicGradeEn = 'Fail'; }
       }
 

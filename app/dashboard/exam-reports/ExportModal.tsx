@@ -20,11 +20,11 @@ const COLUMNS = [
 
 type ColKey = (typeof COLUMNS)[number]["key"];
 
-function getGradeLabel(pts: number) {
-  if (pts < 60) return "ធ្លាក់";
-  if (pts < 70) return "មធ្យម";
-  if (pts < 80) return "ល្អបង្គួរ";
-  if (pts < 90) return "ល្អ";
+function getGradeLabel(pct: number) {
+  if (pct < 60) return "ធ្លាក់";
+  if (pct < 70) return "មធ្យម";
+  if (pct < 80) return "ល្អបង្គួរ";
+  if (pct < 90) return "ល្អ";
   return "ល្អណាស់";
 }
 
@@ -43,8 +43,17 @@ function cellValue(r: ExamResultRow, key: ColKey, idx: number): string {
       return r.exam.course.name;
     case "score":
       return String(r.score);
-    case "grade":
-      return getGradeLabel(r.score);
+    case "grade": {
+      let pct = r.score;
+      const questions = r.exam.questions;
+      if (questions && questions.length > 0) {
+        const totalPoints = questions.reduce((sum: number, q: any) => sum + q.points, 0);
+        if (totalPoints > 0) {
+          pct = Math.round((r.score / totalPoints) * 100);
+        }
+      }
+      return getGradeLabel(pct);
+    }
     case "result":
       return passed ? "ជាប់" : "ធ្លាក់";
     case "promoted":

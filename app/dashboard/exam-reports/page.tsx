@@ -18,7 +18,7 @@ export default async function ExamReportsPage() {
     orderBy: { createdAt: 'desc' },
     include: {
       student: { select: { id: true, studentCode: true, name: true, photoUrl: true, gender: true } },
-      exam: { select: { id: true, title: true, passingScore: true, course: { select: { id: true, name: true } } } },
+      exam: { select: { id: true, title: true, passingScore: true, course: { select: { id: true, name: true } }, questions: { select: { points: true } } } },
     },
   });
 

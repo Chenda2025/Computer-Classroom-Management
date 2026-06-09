@@ -75,7 +75,15 @@ export default function AdminExamResultsClient({ session, promotedMap, nextCours
           <tbody>
             {sorted.map((p, index) => {
               const passed = p.currentScore >= session.exam.passingScore;
-              const grade = getGrade(p.currentScore);
+              
+              let pct = p.currentScore;
+              if (session.exam.questions && session.exam.questions.length > 0) {
+                const totalPoints = session.exam.questions.reduce((sum: number, q: any) => sum + q.points, 0);
+                if (totalPoints > 0) {
+                  pct = Math.round((p.currentScore / totalPoints) * 100);
+                }
+              }
+              const grade = getGrade(pct);
               const promoted = !!promotedMap[p.studentId];
 
               return (

@@ -4,7 +4,7 @@ import styles from '../students/students.module.css';
 import ExportModal from './ExportModal';
 
 interface Student { id: string; studentCode: string; name: string; photoUrl: string | null; gender?: string | null; }
-interface ExamRef { id: string; title: string; passingScore: number; course: { id: string; name: string } }
+interface ExamRef { id: string; title: string; passingScore: number; course: { id: string; name: string }; questions?: { points: number }[] }
 export interface ExamResultRow {
   id: string; score: number; promoted: boolean; studentId: string; examId: string;
   student: Student; exam: ExamRef; createdAt: string; updatedAt: string;
@@ -21,11 +21,11 @@ function daysLeft(createdAt: string, retentionDays: number) {
   return Math.max(0, Math.ceil(retentionDays - ageDays));
 }
 
-function getGrade(pts: number) {
-  if (pts < 60) return { label: 'ធ្លាក់', color: '#ef4444' };
-  if (pts < 70) return { label: 'មធ្យម', color: '#f59e0b' };
-  if (pts < 80) return { label: 'ល្អបង្គួរ', color: '#3b82f6' };
-  if (pts < 90) return { label: 'ល្អ', color: '#8b5cf6' };
+function getGrade(pct: number) {
+  if (pct < 60) return { label: 'ធ្លាក់', color: '#ef4444' };
+  if (pct < 70) return { label: 'មធ្យម', color: '#f59e0b' };
+  if (pct < 80) return { label: 'ល្អបង្គួរ', color: '#3b82f6' };
+  if (pct < 90) return { label: 'ល្អ', color: '#8b5cf6' };
   return { label: 'ល្អណាស់', color: '#10b981' };
 }
 
@@ -117,6 +117,15 @@ export default function ExamReportsClient({ initialResults, retentionDays, userR
               {filtered.map((r, i) => {
                 const passed = r.score >= r.exam.passingScore;
                 const left = daysLeft(r.createdAt, retentionDays);
+                
+                let pct = r.score;
+                if (r.exam.questions && r.exam.questions.length > 0) {
+                  const totalPoints = r.exam.questions.reduce((sum: number, q: any) => sum + q.points, 0);
+                  if (totalPoints > 0) {
+                    pct = Math.round((r.score / totalPoints) * 100);
+                  }
+                }
+                
                 return (
                   <tr key={r.id} className={styles.row}>
                     <td className={styles.indexCell}>{i + 1}</td>
@@ -139,8 +148,8 @@ export default function ExamReportsClient({ initialResults, retentionDays, userR
                     <td className={styles.mutedCell}>{r.exam.course.name}</td>
                     <td><strong style={{ color: 'var(--color-accent)' }}>{r.score}</strong></td>
                     <td>
-                      <span style={{ fontWeight: 600, color: getGrade(r.score).color }}>
-                        {getGrade(r.score).label}
+                      <span style={{ fontWeight: 600, color: getGrade(pct).color }}>
+                        {getGrade(pct).label}
                       </span>
                     </td>
                     <td>
