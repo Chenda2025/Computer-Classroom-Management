@@ -1,5 +1,6 @@
 'use client';
 import { useState, useMemo, useCallback } from 'react';
+import { parsePermissions, canInsert, canWrite, canDelete } from '../../../lib/permissions';
 import { useRouter } from 'next/navigation';
 import styles from './courses.module.css';
 import ExportModal from './ExportModal';
@@ -30,6 +31,7 @@ interface EnrolledStudent extends StudentSummary {
 }
 
 interface Props {
+  userPerms: string;
   initialCourses: Course[];
   allStudents: StudentSummary[];
   enrolledStudentIds: string[];
@@ -57,7 +59,11 @@ function initials(name: string) {
   return name.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase();
 }
 
-export default function CoursesClient({ initialCourses, allStudents, enrolledStudentIds, userRole }: Props) {
+export default function CoursesClient({ initialCourses, allStudents, enrolledStudentIds, userRole, userPerms }: Props) {
+  const permMap = useMemo(() => parsePermissions(userPerms), [userPerms]);
+  const canIns = canInsert(permMap, 'courses', userRole);
+  const canWri = canWrite(permMap, 'courses', userRole);
+  const canDel = canDelete(permMap, 'courses', userRole);
   const isAdmin = userRole === 'ADMIN';
   const router = useRouter();
 
@@ -412,7 +418,7 @@ export default function CoursesClient({ initialCourses, allStudents, enrolledStu
           <button className="btn-secondary" onClick={() => setExportModal(true)}>
             📥 មើលរបាយការណ៍/នាំចេញ
           </button>
-          {isAdmin && (
+          {canIns && (
             <button className={styles.addBtn} onClick={openAdd}>
               <span className={styles.addBtnIcon}>📚</span>
               បញ្ចូលវគ្គសិក្សា
@@ -466,7 +472,7 @@ export default function CoursesClient({ initialCourses, allStudents, enrolledStu
         <div className={styles.emptyState}>
           <div className={styles.emptyIcon}>📚</div>
           <p>{search ? 'រកមិនឃើញវគ្គសិក្សា' : 'មិនទាន់មានវគ្គសិក្សាណាមួយទេ'}</p>
-          {isAdmin && !search && (
+          {canIns && !search && (
             <button className={styles.addBtn} onClick={openAdd} style={{ marginTop: 20 }}>
               <span className={styles.addBtnIcon}>📚</span>
               បញ្ចូលវគ្គសិក្សា
@@ -549,14 +555,8 @@ export default function CoursesClient({ initialCourses, allStudents, enrolledStu
                   >
                     {isAdmin ? '👥 គ្រប់គ្រងសិស្ស' : '👁️ មើលសិស្ស'}
                   </button>
-                  {isAdmin && (
-                    <>
-                      <button className={`${styles.iconBtn} ${styles.editBtn}`}
-                        onClick={() => openEdit(course)} title="កែប្រែ">✏️</button>
-                      <button className={`${styles.iconBtn} ${styles.deleteBtn}`}
-                        onClick={() => setDeleteTarget(course.id)} title="លុប">🗑️</button>
-                    </>
-                  )}
+                  {canWri && <button className={`${styles.iconBtn} ${styles.editBtn}`} onClick={() => openEdit(course)} title="កែប្រែ">✏️</button>}
+                  {canDel && <button className={`${styles.iconBtn} ${styles.deleteBtn}`} onClick={() => setDeleteTarget(course.id)} title="លុប">🗑️</button>}
                 </div>
               </div>
             );
@@ -567,7 +567,7 @@ export default function CoursesClient({ initialCourses, allStudents, enrolledStu
     </div>{/* end animate-fade-in */}
 
       {/* ── Bulk Action Bar ── */}
-      {isAdmin && selectedIds.size > 0 && (
+      {canDel && selectedIds.size > 0 && (
         <div style={{ position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)', background: 'var(--color-surface)', padding: '12px 24px', borderRadius: 30, boxShadow: '0 8px 32px rgba(0,0,0,0.2)', display: 'flex', alignItems: 'center', gap: 16, zIndex: 100, border: '1px solid var(--color-border)' }}>
           <span style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>✓ បានជ្រើសរើស {selectedIds.size} វគ្គ</span>
           <div style={{ display: 'flex', gap: 8 }}>
@@ -900,7 +900,7 @@ export default function CoursesClient({ initialCourses, allStudents, enrolledStu
                     {enrolled.length}
                   </span>
                 </div>
-                {isAdmin && eligibleForExamReq.length > 0 && (
+                {canIns && eligibleForExamReq.length > 0 && (
                   <div className={styles.examReqBulkBar}>
                     <label className={styles.examReqSelectAll}>
                       <input
@@ -940,7 +940,7 @@ export default function CoursesClient({ initialCourses, allStudents, enrolledStu
                   )}
                   {!enrollLoading && enrolled.map(student => (
                     <div key={student.id} className={styles.studentRow}>
-                      {isAdmin && student.examId && !examReqDoneIds.has(student.id) && (
+                      {canIns && student.examId && !examReqDoneIds.has(student.id) && (
                         <input
                           type="checkbox"
                           className={styles.examReqCheck}
@@ -961,7 +961,7 @@ export default function CoursesClient({ initialCourses, allStudents, enrolledStu
                         <div className={styles.studentName}>{student.name}</div>
                         <div className={styles.studentCode}>{student.studentCode}</div>
                       </div>
-                      {isAdmin && student.examId && (
+                      {canIns && student.examId && (
                         <button
                           className={`${styles.rowActionBtn} ${examReqDoneIds.has(student.id) ? styles.examReqDoneBtn : styles.examReqBtn}`}
                           onClick={() => handlePromoteToExamRequest(student.id, student.examId!)}
@@ -971,7 +971,7 @@ export default function CoursesClient({ initialCourses, allStudents, enrolledStu
                           {examReqId === student.id ? '…' : examReqDoneIds.has(student.id) ? '✓' : '📋'}
                         </button>
                       )}
-                      {isAdmin && (
+                      {canDel && (
                         <button
                           className={`${styles.rowActionBtn} ${styles.removeRowBtn}`}
                           onClick={() => handleUnenroll(student.id)}
@@ -991,7 +991,7 @@ export default function CoursesClient({ initialCourses, allStudents, enrolledStu
                               ? '⏳ មិនទាន់ប្រឡង'
                               : student.passed ? `✓ ជាប់ • ${student.score}` : `✗ ធ្លាក់ • ${student.score}`}
                           </span>
-                          {isAdmin && (
+                          {canWri && (
                             <form
                               className={styles.scoreForm}
                               onSubmit={e => { e.preventDefault(); handleSetScore(student.id); }}
@@ -1023,7 +1023,7 @@ export default function CoursesClient({ initialCourses, allStudents, enrolledStu
                     {available.length}
                   </span>
                 </div>
-                {isAdmin && (
+                {canIns && (
                   <div className={styles.panelSearch}>
                     <input
                       type="text"
@@ -1069,7 +1069,7 @@ export default function CoursesClient({ initialCourses, allStudents, enrolledStu
                         <div className={styles.studentName}>{student.name}</div>
                         <div className={styles.studentCode}>{student.studentCode}</div>
                       </div>
-                      {isAdmin && (
+                      {canIns && (
                         <button
                           className={`${styles.rowActionBtn} ${styles.addRowBtn}`}
                           onClick={() => handleEnroll(student.id)}

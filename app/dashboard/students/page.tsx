@@ -1,15 +1,16 @@
 import { redirect } from 'next/navigation';
-import { getSession } from '../../../lib/auth';
 import { prisma } from '../../../lib/prisma';
+import { getSessionUser } from '../../../lib/getSessionUser';
 import StudentsClient from './StudentsClient';
 
 export const dynamic = 'force-dynamic';
 
 export default async function StudentsPage() {
-  const session = await getSession();
+  const session = await getSessionUser();
   if (!session) redirect('/');
 
   const students = await prisma.student.findMany({
+    take: 1000,
     orderBy: { createdAt: 'desc' },
     include: {
       _count: { select: { enrollments: true } },
@@ -24,7 +25,8 @@ export default async function StudentsPage() {
         createdAt: s.createdAt.toISOString(),
         updatedAt: s.updatedAt.toISOString(),
       }))}
-      userRole={session.role as string}
+      userRole={session.role}
+      userPerms={session.permissions}
     />
   );
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { parsePermissions, canInsert, canWrite, canDelete } from '../../../lib/permissions';
 import Select from 'react-select';
 import styles from '../students/students.module.css';
 import k from './pagodas.module.css';
@@ -63,14 +64,17 @@ interface Pagoda {
   _count: { kutis: number };
 }
 
-interface Props { initialPagodas: Pagoda[]; userRole: string; }
+interface Props { initialPagodas: Pagoda[]; userRole: string; userPerms: string; }
 
 const EMPTY_PAGODA = { name: '', province: '', district: '', commune: '', village: '', phone: '', notes: '' };
 const EMPTY_KUTI   = { pagodaId: '', name: '', floor: '', number: '', headId: '', subHeadId: '', notes: '' };
 const EMPTY_MONK   = { id: '', name: '', age: '', gender: 'ប្រុស', phone: '' };
 
-export default function PagodasClient({ initialPagodas, userRole }: Props) {
-  const isAdmin = userRole === 'ADMIN';
+export default function PagodasClient({ initialPagodas, userRole, userPerms }: Props) {
+  const permMap = useMemo(() => parsePermissions(userPerms), [userPerms]);
+  const canIns = canInsert(permMap, 'pagodas', userRole);
+  const canWri = canWrite(permMap, 'pagodas', userRole);
+  const canDel = canDelete(permMap, 'pagodas', userRole);
 
   const [activeTab, setActiveTab] = useState<'pagodas' | 'kutis'>('pagodas');
 
@@ -264,8 +268,8 @@ export default function PagodasClient({ initialPagodas, userRole }: Props) {
             </p>
           </div>
           <div style={{ display: 'flex', gap: 10 }}>
-            {isAdmin && <button className="btn-outline" onClick={openAddPagoda}>+ បន្ថែមវត្ត</button>}
-            {isAdmin && <button className="btn-primary" onClick={openAddKuti}>+ បន្ថែមកុដិ</button>}
+            {canIns && <button className="btn-outline" onClick={openAddPagoda}>+ បន្ថែមវត្ត</button>}
+            {canIns && <button className="btn-primary" onClick={openAddKuti}>+ បន្ថែមកុដិ</button>}
           </div>
         </div>
 
@@ -317,13 +321,13 @@ export default function PagodasClient({ initialPagodas, userRole }: Props) {
                   <div className={k.cardInfoRow}><span className={k.cardInfoIcon}>🏘️</span><span>{[p.commune, p.village].filter(Boolean).join(', ') || '—'}</span></div>
                   <div className={k.cardInfoRow}><span className={k.cardInfoIcon}>📱</span><span>{p.phone ?? '—'}</span></div>
                 </div>
-                {isAdmin && (
+                {(canWri || canDel) && (
                   <div className={k.cardFooter}>
-                    <button className={`${styles.actionBtn} ${styles.editBtn} ${k.footerBtn}`} onClick={() => {
+                    {canWri && <button className={`${styles.actionBtn} ${styles.editBtn} ${k.footerBtn}`} onClick={() => {
                       setPagodaForm({ name: p.name, province: p.province ?? '', district: p.district ?? '', commune: p.commune ?? '', village: p.village ?? '', phone: p.phone ?? '', notes: p.notes ?? '' });
                       setEditingPagodaId(p.id); setPagodaModal(true);
-                    }}>✏️ កែប្រែ</button>
-                    <button className={`${styles.actionBtn} ${styles.deleteBtn} ${k.footerBtn}`} onClick={() => setDeleteTarget({ type: 'pagoda', id: p.id })}>🗑️ លុប</button>
+                    }}>✏️ កែប្រែ</button>}
+                    {canDel && <button className={`${styles.actionBtn} ${styles.deleteBtn} ${k.footerBtn}`} onClick={() => setDeleteTarget({ type: 'pagoda', id: p.id })}>🗑️ លុប</button>}
                   </div>
                 )}
               </div>
@@ -355,10 +359,10 @@ export default function PagodasClient({ initialPagodas, userRole }: Props) {
                   {ku.floor && <div className={k.cardInfoRow}><span className={k.cardInfoIcon}>🏢</span><span>ជាន់ {ku.floor}</span></div>}
                   {ku.number && <div className={k.cardInfoRow}><span className={k.cardInfoIcon}>#</span><span>លេខ {ku.number}</span></div>}
                 </div>
-                {isAdmin && (
+                {(canWri || canDel) && (
                   <div className={k.cardFooter}>
-                    <button className={`${styles.actionBtn} ${styles.editBtn} ${k.footerBtn}`} onClick={() => openEditKuti(ku)}>✏️ កែប្រែ</button>
-                    <button className={`${styles.actionBtn} ${styles.deleteBtn} ${k.footerBtn}`} onClick={() => setDeleteTarget({ type: 'kuti', id: ku.id })}>🗑️ លុប</button>
+                    {canWri && <button className={`${styles.actionBtn} ${styles.editBtn} ${k.footerBtn}`} onClick={() => openEditKuti(ku)}>✏️ កែប្រែ</button>}
+                    {canDel && <button className={`${styles.actionBtn} ${styles.deleteBtn} ${k.footerBtn}`} onClick={() => setDeleteTarget({ type: 'kuti', id: ku.id })}>🗑️ លុប</button>}
                   </div>
                 )}
               </div>

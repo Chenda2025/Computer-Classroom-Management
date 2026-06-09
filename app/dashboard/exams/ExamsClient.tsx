@@ -1,5 +1,6 @@
 'use client';
 import { useState, useMemo } from 'react';
+import { parsePermissions, canInsert, canWrite, canDelete } from '../../../lib/permissions';
 import styles from '../students/students.module.css';
 import cardStyles from './exams.module.css';
 
@@ -26,12 +27,15 @@ interface Exam {
   _count: { questions: number; results: number; examRequests: number };
   createdAt: string; updatedAt: string;
 }
-interface Props { initialExams: Exam[]; courses: Course[]; userRole: string; }
+interface Props { initialExams: Exam[]; courses: Course[]; userRole: string; userPerms: string; }
 
 const EMPTY = { title: '', type: 'OFFLINE', courseId: '', isActive: true };
 
-export default function ExamsClient({ initialExams, courses, userRole }: Props) {
-  const isAdmin = userRole === 'ADMIN';
+export default function ExamsClient({ initialExams, courses, userRole, userPerms }: Props) {
+  const permMap = useMemo(() => parsePermissions(userPerms), [userPerms]);
+  const canIns = canInsert(permMap, 'exams', userRole);
+  const canWri = canWrite(permMap, 'exams', userRole);
+  const canDel = canDelete(permMap, 'exams', userRole);
   const [exams, setExams] = useState<Exam[]>(initialExams);
   const [search, setSearch] = useState('');
   const [modal, setModal] = useState(false);
@@ -106,7 +110,7 @@ export default function ExamsClient({ initialExams, courses, userRole }: Props) 
             ប្រឡងសរុប: <strong style={{ color: 'var(--color-accent)' }}>{exams.length}</strong>
           </p>
         </div>
-        {isAdmin && <button className="btn-primary" onClick={openAdd}>+ បន្ថែមប្រឡង</button>}
+        {canIns && <button className="btn-primary" onClick={openAdd}>+ បន្ថែមប្រឡង</button>}
       </div>
 
       <div className={styles.toolbar}>
@@ -122,7 +126,7 @@ export default function ExamsClient({ initialExams, courses, userRole }: Props) 
         <div className={styles.emptyState}>
           <div className={styles.emptyIcon}>📝</div>
           <p>{search ? 'រកមិនឃើញប្រឡង' : 'មិនទាន់មានប្រឡងទេ'}</p>
-          {isAdmin && !search && <button className="btn-primary" onClick={openAdd} style={{ marginTop: 20 }}>បន្ថែមប្រឡងដំបូង</button>}
+          {canIns && !search && <button className="btn-primary" onClick={openAdd} style={{ marginTop: 20 }}>បន្ថែមប្រឡងដំបូង</button>}
         </div>
       ) : (
         <div className={cardStyles.examGrid}>
@@ -172,9 +176,9 @@ export default function ExamsClient({ initialExams, courses, userRole }: Props) 
                   </div>
                 </div>
 
-                {isAdmin && (
+                {(canIns || canWri || canDel) && (
                   <div className={cardStyles.cardActions}>
-                    <button className={cardStyles.iconBtn} onClick={() => startLiveExam(e.id)} title="បើកបន្ទប់ប្រឡងអនឡាញ">🌐</button>
+                    {canIns && <button className={cardStyles.iconBtn} onClick={() => startLiveExam(e.id)} title="បើកបន្ទប់ប្រឡងអនឡាញ">🌐</button>}
                     <button
                       className={cardStyles.manageBtn}
                       style={{ color: clr.color, borderColor: clr.color + '44', background: clr.bg }}
@@ -182,8 +186,8 @@ export default function ExamsClient({ initialExams, courses, userRole }: Props) 
                     >
                       👁️ មើលសំណួរ
                     </button>
-                    <button className={cardStyles.iconBtn} onClick={() => openEdit(e)} title="កែប្រែ">✏️</button>
-                    <button className={`${cardStyles.iconBtn} ${cardStyles.deleteBtn}`} onClick={() => setDeleteTarget(e.id)} title="លុប">🗑️</button>
+                    {canWri && <button className={cardStyles.iconBtn} onClick={() => openEdit(e)} title="កែប្រែ">✏️</button>}
+                    {canDel && <button className={`${cardStyles.iconBtn} ${cardStyles.deleteBtn}`} onClick={() => setDeleteTarget(e.id)} title="លុប">🗑️</button>}
                   </div>
                 )}
               </div>

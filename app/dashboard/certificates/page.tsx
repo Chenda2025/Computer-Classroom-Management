@@ -1,14 +1,15 @@
 import { redirect } from 'next/navigation';
-import { getSession } from '../../../lib/auth';
 import { prisma } from '../../../lib/prisma';
+import { getSessionUser } from '../../../lib/getSessionUser';
 import CertificatesClient from './CertificatesClient';
 
 export default async function CertificatesPage() {
-  const session = await getSession();
+  const session = await getSessionUser();
   if (!session) redirect('/');
 
   const [certificates, students] = await Promise.all([
     prisma.certificate.findMany({
+      take: 1000,
       orderBy: { createdAt: 'desc' },
       include: { 
         student: { 
@@ -21,7 +22,7 @@ export default async function CertificatesPage() {
         } 
       },
     }),
-    prisma.student.findMany({ orderBy: { name: 'asc' }, select: { id: true, studentCode: true, name: true, nameEn: true, photoUrl: true, gender: true, dateOfBirth: true } }),
+    prisma.student.findMany({ take: 1000, orderBy: { name: 'asc' }, select: { id: true, studentCode: true, name: true, nameEn: true, photoUrl: true, gender: true, dateOfBirth: true } }),
   ]);
 
   return (
@@ -40,10 +41,20 @@ export default async function CertificatesPage() {
             ...p,
             createdAt: p.createdAt.toISOString(),
           })),
+          results: c.student.results?.map(r => ({
+            ...r,
+            createdAt: r.createdAt.toISOString(),
+            exam: {
+              ...r.exam,
+              createdAt: r.exam.createdAt.toISOString(),
+              updatedAt: r.exam.updatedAt.toISOString(),
+            },
+          })),
         },
       }))}
       students={students}
-      userRole={session.role as string}
+      userRole={session.role}
+      userPerms={session.permissions}
     />
   );
 }

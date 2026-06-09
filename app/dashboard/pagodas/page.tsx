@@ -1,10 +1,10 @@
 import { redirect } from 'next/navigation';
-import { getSession } from '../../../lib/auth';
 import { prisma } from '../../../lib/prisma';
+import { getSessionUser } from '../../../lib/getSessionUser';
 import PagodasClient from './PagodasClient';
 
 export default async function PagodasPage() {
-  const session = await getSession();
+  const session = await getSessionUser();
   if (!session) redirect('/');
 
   const pagodas = await prisma.pagoda.findMany({
@@ -19,7 +19,8 @@ export default async function PagodasPage() {
         createdAt: p.createdAt.toISOString(),
         updatedAt: p.updatedAt.toISOString(),
       }))}
-      userRole={session.role as string}
+      userRole={session.role}
+      userPerms={session.permissions}
     />
   );
 }

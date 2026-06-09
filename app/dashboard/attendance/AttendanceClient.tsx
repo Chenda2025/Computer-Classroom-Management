@@ -28,6 +28,7 @@ interface Props {
   courses: CourseSummary[];
   today: string;
   userRole: string;
+  userPerms: string;
 }
 
 type Period = '15D' | '1M' | '1Y';
@@ -83,7 +84,7 @@ function buildMap(records: AttendanceRecord[]) {
   return m;
 }
 
-export default function AttendanceClient({ courses, today, userRole }: Props) {
+export default function AttendanceClient({ courses, today, userRole, userPerms: _userPerms }: Props) {
   const isAdmin = userRole === 'ADMIN';
   const isMonitor = userRole === 'MONITOR';
 

@@ -1,10 +1,10 @@
 import { redirect } from 'next/navigation';
-import { getSession } from '../../../lib/auth';
 import { prisma } from '../../../lib/prisma';
+import { getSessionUser } from '../../../lib/getSessionUser';
 import TeachersClient from './TeachersClient';
 
 export default async function TeachersPage() {
-  const session = await getSession();
+  const session = await getSessionUser();
   if (!session) redirect('/');
 
   const [teachers, courses] = await Promise.all([
@@ -20,7 +20,8 @@ export default async function TeachersPage() {
         updatedAt: t.updatedAt.toISOString(),
       }))}
       courses={courses}
-      userRole={session.role as string}
+      userRole={session.role}
+      userPerms={session.permissions}
     />
   );
 }

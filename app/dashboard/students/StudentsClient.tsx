@@ -1,5 +1,6 @@
 'use client';
 import { useState, useMemo, useEffect } from 'react';
+import { parsePermissions, canInsert, canWrite, canDelete } from '../../../lib/permissions';
 import Select from 'react-select';
 import CreatableSelect from 'react-select/creatable';
 import Link from 'next/link';
@@ -76,6 +77,7 @@ interface Student {
 interface Props {
   initialStudents: Student[];
   userRole: string;
+  userPerms: string;
 }
 
 type Tab = 'basic' | 'residence' | 'bio';
@@ -95,7 +97,11 @@ function isComplete(s: Student) {
   return !!(s.gender && s.dateOfBirth && s.wat);
 }
 
-export default function StudentsClient({ initialStudents, userRole }: Props) {
+export default function StudentsClient({ initialStudents, userRole, userPerms }: Props) {
+  const permMap = useMemo(() => parsePermissions(userPerms), [userPerms]);
+  const canIns = canInsert(permMap, 'students', userRole);
+  const canWri = canWrite(permMap, 'students', userRole);
+  const canDel = canDelete(permMap, 'students', userRole);
   const isAdmin = userRole === 'ADMIN';
 
   const [students, setStudents] = useState<Student[]>(initialStudents);
@@ -484,7 +490,7 @@ export default function StudentsClient({ initialStudents, userRole }: Props) {
             <button className={styles.exportBtnOutline} onClick={() => setExportModal(true)}>
               📤 នាំចេញ
             </button>
-            {isAdmin && (
+            {canIns && (
               <button className="btn-primary" onClick={openAdd}>+ ចុះឈ្មោះសិស្ស</button>
             )}
           </div>
@@ -597,7 +603,7 @@ export default function StudentsClient({ initialStudents, userRole }: Props) {
           <div className={styles.emptyState}>
             <div className={styles.emptyIcon}>📋</div>
             <p>{search ? 'រកមិនឃើញសិស្សដែលត្រូវនឹងការស្វែងរក' : 'មិនទាន់មានសិស្សណាមួយទេ'}</p>
-            {isAdmin && !search && (
+            {canIns && !search && (
               <button className="btn-primary" onClick={openAdd} style={{ marginTop: 20 }}>ចុះឈ្មោះសិស្សដំបូង</button>
             )}
           </div>
@@ -607,7 +613,7 @@ export default function StudentsClient({ initialStudents, userRole }: Props) {
               <div key={student.id} className={`${styles.studentCard} ${selectedIds.has(student.id) ? styles.cardSelected : ''}`}>
                 <div className={`${styles.cardHeader} ${isComplete(student) ? styles.cardHeaderComplete : styles.cardHeaderIncomplete}`}>
                   <div className={styles.cardIndexBadge}>{(safePage - 1) * PAGE_SIZE + i + 1}</div>
-                  {isAdmin && (
+                  {canDel && (
                     <input
                       type="checkbox"
                       className={styles.cardCheckbox}
@@ -642,12 +648,8 @@ export default function StudentsClient({ initialStudents, userRole }: Props) {
                   </div>
                   <div className={styles.cardActions}>
                     <button className={`${styles.actionBtn} ${styles.viewBtn}`} onClick={() => setViewStudent(student)} title="មើល">👁️</button>
-                    {isAdmin && (
-                      <>
-                        <button className={`${styles.actionBtn} ${styles.editBtn}`} onClick={() => openEdit(student)} title="កែ">✏️</button>
-                        <button className={`${styles.actionBtn} ${styles.deleteBtn}`} onClick={() => setDeleteTarget(student.id)} title="លុប">🗑️</button>
-                      </>
-                    )}
+                    {canWri && <button className={`${styles.actionBtn} ${styles.editBtn}`} onClick={() => openEdit(student)} title="កែ">✏️</button>}
+                    {canDel && <button className={`${styles.actionBtn} ${styles.deleteBtn}`} onClick={() => setDeleteTarget(student.id)} title="លុប">🗑️</button>}
                   </div>
                 </div>
               </div>
@@ -658,7 +660,7 @@ export default function StudentsClient({ initialStudents, userRole }: Props) {
             <table className={styles.table}>
               <thead className={styles.thead}>
                 <tr>
-                  {isAdmin && (
+                  {canDel && (
                     <th className={styles.checkCell}>
                       <input
                         type="checkbox"
@@ -680,13 +682,13 @@ export default function StudentsClient({ initialStudents, userRole }: Props) {
                   <th>ស្ថានភាព</th>
                   <th>កាលបរិច្ឆេទ</th>
                   <th></th>
-                  {isAdmin && <th>ការគ្រប់គ្រង</th>}
+                  {(canWri || canDel) && <th>ការគ្រប់គ្រង</th>}
                 </tr>
               </thead>
               <tbody>
                 {paginated.map((student, i) => (
                   <tr key={student.id} className={`${styles.row} ${selectedIds.has(student.id) ? styles.rowSelected : ''}`}>
-                    {isAdmin && (
+                    {canDel && (
                       <td className={styles.checkCell}>
                         <input
                           type="checkbox"
@@ -736,23 +738,11 @@ export default function StudentsClient({ initialStudents, userRole }: Props) {
                         👁️
                       </button>
                     </td>
-                    {isAdmin && (
+                    {(canWri || canDel) && (
                       <td>
                         <div className={styles.actionGroup}>
-                          <button
-                            className={`${styles.actionBtn} ${styles.editBtn}`}
-                            onClick={() => openEdit(student)}
-                            title="ព័ត៌មានពេញ"
-                          >
-                            ✏️
-                          </button>
-                          <button
-                            className={`${styles.actionBtn} ${styles.deleteBtn}`}
-                            onClick={() => setDeleteTarget(student.id)}
-                            title="លុប"
-                          >
-                            🗑️
-                          </button>
+                          {canWri && <button className={`${styles.actionBtn} ${styles.editBtn}`} onClick={() => openEdit(student)} title="ព័ត៌មានពេញ">✏️</button>}
+                          {canDel && <button className={`${styles.actionBtn} ${styles.deleteBtn}`} onClick={() => setDeleteTarget(student.id)} title="លុប">🗑️</button>}
                         </div>
                       </td>
                     )}
@@ -1452,7 +1442,7 @@ export default function StudentsClient({ initialStudents, userRole }: Props) {
                 <span className={styles.profileFooterDate}>
                   🗓 ចុះឈ្មោះ: {formatDate(viewStudent.createdAt)}
                 </span>
-                {isAdmin && (
+                {canWri && (
                   <button
                     className="btn-primary"
                     style={{ fontSize: '0.82rem', padding: '7px 16px' }}
@@ -1477,7 +1467,7 @@ export default function StudentsClient({ initialStudents, userRole }: Props) {
       )}
 
       {/* ── Bulk Action Bar ── */}
-      {isAdmin && selectedIds.size > 0 && (
+      {canDel && selectedIds.size > 0 && (
         <div className={styles.bulkBar}>
           <span className={styles.bulkCount}>✓ បានជ្រើសរើស {selectedIds.size} នាក់</span>
           <div style={{ display: 'flex', gap: 8 }}>

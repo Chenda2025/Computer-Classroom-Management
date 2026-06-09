@@ -1,5 +1,6 @@
 'use client';
 import { useState, useMemo } from 'react';
+import { parsePermissions, canInsert, canWrite, canDelete } from '../../../lib/permissions';
 import styles from '../students/students.module.css';
 import cc from './classes.module.css';
 import ExportModal from './ExportModal';
@@ -20,6 +21,7 @@ interface ClassRow {
 interface Props {
   initialClasses: ClassRow[];
   userRole: string;
+  userPerms: string;
 }
 
 function currentAcademicYear(): string {
@@ -49,8 +51,11 @@ function levelColor(level: string | null): [string, string] {
   return ['#6366f1', '#818cf8'];
 }
 
-export default function ClassesClient({ initialClasses, userRole }: Props) {
-  const isAdmin = userRole === 'ADMIN';
+export default function ClassesClient({ initialClasses, userRole, userPerms }: Props) {
+  const permMap = useMemo(() => parsePermissions(userPerms), [userPerms]);
+  const canIns = canInsert(permMap, 'classes', userRole);
+  const canWri = canWrite(permMap, 'classes', userRole);
+  const canDel = canDelete(permMap, 'classes', userRole);
   const [classes, setClasses] = useState<ClassRow[]>(initialClasses);
   const [search, setSearch] = useState('');
   const [filterYear, setFilterYear] = useState('');
@@ -215,7 +220,7 @@ export default function ClassesClient({ initialClasses, userRole }: Props) {
           <button className="btn-secondary" onClick={() => setExportModal(true)}>
             📥 មើលរបាយការណ៍/នាំចេញ
           </button>
-          {isAdmin && <button className="btn-primary" onClick={openAdd}>+ បន្ថែមថ្នាក់ថ្មី</button>}
+          {canIns && <button className="btn-primary" onClick={openAdd}>+ បន្ថែមថ្នាក់ថ្មី</button>}
         </div>
       </div>
 
@@ -265,7 +270,7 @@ export default function ClassesClient({ initialClasses, userRole }: Props) {
         <div className={styles.emptyState}>
           <div className={styles.emptyIcon}>🏫</div>
           <p>{(search || filterYear) ? 'រកមិនឃើញថ្នាក់ដែលត្រូវនឹងការត្រង' : 'មិនទាន់មានថ្នាក់រៀនទេ'}</p>
-          {isAdmin && !search && !filterYear && (
+          {canIns && !search && !filterYear && (
             <button className="btn-primary" onClick={openAdd} style={{ marginTop: 20 }}>បន្ថែមថ្នាក់ដំបូង</button>
           )}
         </div>
@@ -282,7 +287,7 @@ export default function ClassesClient({ initialClasses, userRole }: Props) {
                 className={`${cc.card} ${selectedIds.has(c.id) ? cc.cardSelected : ''}`}
                 style={{ '--card-color': col, '--card-color-light': colLight, animationDelay: `${i * 45}ms` } as React.CSSProperties}
               >
-                {isAdmin && (
+                {canDel && (
                   <input type="checkbox" className={cc.cardCheck}
                     checked={selectedIds.has(c.id)} onChange={() => toggleSelect(c.id)} />
                 )}
@@ -333,13 +338,13 @@ export default function ClassesClient({ initialClasses, userRole }: Props) {
                 <div className={cc.cardFooter}>
                   <button className={`${styles.actionBtn} ${cc.footerBtn} ${cc.infoBtn}`}
                     onClick={() => setInfoClass(c)} title="ព័ត៌មានលម្អិត">👁️ ព័ត៌មាន</button>
-                  {isAdmin && (
-                    <>
-                      <button className={`${styles.actionBtn} ${styles.editBtn} ${cc.footerBtn}`}
-                        onClick={() => openEdit(c)}>✏️ កែប្រែ</button>
-                      <button className={`${styles.actionBtn} ${styles.deleteBtn} ${cc.footerBtn}`}
-                        onClick={() => setDeleteTarget(c.id)}>🗑️ លុប</button>
-                    </>
+                  {canWri && (
+                    <button className={`${styles.actionBtn} ${styles.editBtn} ${cc.footerBtn}`}
+                      onClick={() => openEdit(c)}>✏️ កែប្រែ</button>
+                  )}
+                  {canDel && (
+                    <button className={`${styles.actionBtn} ${styles.deleteBtn} ${cc.footerBtn}`}
+                      onClick={() => setDeleteTarget(c.id)}>🗑️ លុប</button>
                   )}
                 </div>
               </div>
@@ -351,7 +356,7 @@ export default function ClassesClient({ initialClasses, userRole }: Props) {
       <PaginationBar />
 
       {/* ── Bulk bar ── */}
-      {isAdmin && selectedIds.size > 0 && (
+      {canDel && selectedIds.size > 0 && (
         <div style={{ position: 'fixed', bottom: 24, left: '50%', transform: 'translateX(-50%)', background: 'var(--color-surface)', padding: '12px 24px', borderRadius: 30, boxShadow: '0 8px 32px rgba(0,0,0,0.2)', display: 'flex', alignItems: 'center', gap: 16, zIndex: 100, border: '1px solid var(--color-border)' }}>
           <span style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>✓ បានជ្រើសរើស {selectedIds.size} ថ្នាក់</span>
           <div style={{ display: 'flex', gap: 8 }}>

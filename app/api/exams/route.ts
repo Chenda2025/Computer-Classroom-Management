@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '../../../lib/prisma';
 import { getSession } from '../../../lib/auth';
+import { requireInsert } from '../../../lib/apiAuth';
 
 export async function GET() {
   const session = await getSession();
@@ -17,9 +18,8 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const session = await getSession();
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  if (session.role !== 'ADMIN') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  const auth = await requireInsert('exams');
+  if ('res' in auth) return auth.res;
 
   const { title, type, courseId, isActive } = await request.json();
   if (!title?.trim()) return NextResponse.json({ error: 'ចំណងជើងប្រឡងត្រូវការ' }, { status: 400 });

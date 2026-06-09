@@ -142,6 +142,8 @@ model Enrollment {
   createdAt DateTime @default(now())
 
   @@unique([studentId, courseId])
+  @@index([studentId])
+  @@index([courseId])
 }
 
 model LessonPlan {
@@ -153,6 +155,8 @@ model LessonPlan {
   course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([courseId])
 }
 
 model Schedule {
@@ -168,6 +172,8 @@ model Schedule {
   course      Course?  @relation(fields: [courseId], references: [id], onDelete: SetNull)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  @@index([courseId])
 }
 
 model Attendance {
@@ -178,6 +184,9 @@ model Attendance {
   student   Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([studentId])
+  @@index([date])
 }
 
 model Portfolio {
@@ -190,6 +199,9 @@ model Portfolio {
   course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([studentId])
+  @@index([courseId])
 }
 
 model Exam {
@@ -207,6 +219,8 @@ model Exam {
   isActive     Boolean       @default(true)
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
+
+  @@index([courseId])
 }
 
 model Question {
@@ -223,6 +237,8 @@ model Question {
   studentAnswers StudentAnswer[]
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+
+  @@index([examId])
 }
 
 model ExamResult {
@@ -237,6 +253,8 @@ model ExamResult {
   updatedAt DateTime @updatedAt
 
   @@unique([studentId, examId])
+  @@index([studentId])
+  @@index([examId])
 }
 
 model ExamRequest {
@@ -249,6 +267,9 @@ model ExamRequest {
   exam      Exam     @relation(fields: [examId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([studentId])
+  @@index([examId])
 }
 
 model ExamSession {
@@ -262,6 +283,8 @@ model ExamSession {
   endedAt        DateTime?
   createdAt      DateTime            @default(now())
   updatedAt      DateTime            @updatedAt
+
+  @@index([examId])
 }
 
 model ExamParticipation {
@@ -279,6 +302,8 @@ model ExamParticipation {
   updatedAt    DateTime        @updatedAt
 
   @@unique([sessionId, studentId])
+  @@index([sessionId])
+  @@index([studentId])
 }
 
 model StudentAnswer {
@@ -292,6 +317,8 @@ model StudentAnswer {
   answeredAt      DateTime          @default(now())
 
   @@unique([participationId, questionId])
+  @@index([participationId])
+  @@index([questionId])
 }
 
 model Certificate {
@@ -303,6 +330,8 @@ model Certificate {
   student     Student  @relation(fields: [studentId], references: [id], onDelete: Cascade)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  @@index([studentId])
 }
 
 model District {

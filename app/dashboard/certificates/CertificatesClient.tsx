@@ -1,4 +1,5 @@
 'use client';
+import { parsePermissions, canInsert, canDelete } from '../../../lib/permissions';
 import { useState, useMemo } from 'react';
 import styles from '../students/students.module.css';
 import CertificatePrintModal from './CertificatePrintModal';
@@ -12,12 +13,14 @@ interface Certificate {
   id: string; title: string; issuedDate: string; description: string | null;
   studentId: string; student: Student; createdAt: string; updatedAt: string;
 }
-interface Props { initialCertificates: Certificate[]; students: Student[]; userRole: string; }
+interface Props { initialCertificates: Certificate[]; students: Student[]; userRole: string; userPerms: string; }
 
 const EMPTY = { studentId: '', title: '', issuedDate: '', description: '' };
 
-export default function CertificatesClient({ initialCertificates, students, userRole }: Props) {
-  const isAdmin = userRole === 'ADMIN';
+export default function CertificatesClient({ initialCertificates, students, userRole, userPerms }: Props) {
+  const permMap = useMemo(() => parsePermissions(userPerms), [userPerms]);
+  const canIns = canInsert(permMap, 'certificates', userRole);
+  const canDel = canDelete(permMap, 'certificates', userRole);
   const [certs, setCerts] = useState<Certificate[]>(initialCertificates);
   const [search, setSearch] = useState('');
   const [modal, setModal] = useState(false);
@@ -76,7 +79,7 @@ export default function CertificatesClient({ initialCertificates, students, user
         </div>
         <div style={{ display: 'flex', gap: '12px' }}>
           <button className="btn-secondary" onClick={() => setShowExport(true)}>📤 ទាញយករបាយការណ៍</button>
-          {isAdmin && <button className="btn-primary" onClick={() => { setError(''); setForm(EMPTY); setModal(true); }}>+ ចេញវិញ្ញាបនបត្រ</button>}
+          {canIns && <button className="btn-primary" onClick={() => { setError(''); setForm(EMPTY); setModal(true); }}>+ ចេញវិញ្ញាបនបត្រ</button>}
         </div>
       </div>
 
@@ -97,7 +100,7 @@ export default function CertificatesClient({ initialCertificates, students, user
         ) : (
           <table className={styles.table}>
             <thead className={styles.thead}>
-              <tr><th>#</th><th>ចំណងជើង</th><th>សិស្ស</th><th>ថ្ងៃចេញ</th><th>ការពិពណ៌នា</th>{isAdmin && <th>ការគ្រប់គ្រង</th>}</tr>
+              <tr><th>#</th><th>ចំណងជើង</th><th>សិស្ស</th><th>ថ្ងៃចេញ</th><th>ការពិពណ៌នា</th>{(canIns || canDel) && <th>ការគ្រប់គ្រង</th>}</tr>
             </thead>
             <tbody>
               {filtered.map((c, i) => (
@@ -113,7 +116,7 @@ export default function CertificatesClient({ initialCertificates, students, user
                   <td>
                     <div style={{ display: 'flex', gap: '8px' }}>
                       <button className={styles.actionBtn} onClick={() => setPrintTarget(c)} title="មើល និងបោះពុម្ព">👁️/🖨️</button>
-                      {isAdmin && (
+                      {canDel && (
                         <button className={`${styles.actionBtn} ${styles.deleteBtn}`} onClick={() => setDeleteTarget(c.id)} title="លុប">🗑️</button>
                       )}
                     </div>

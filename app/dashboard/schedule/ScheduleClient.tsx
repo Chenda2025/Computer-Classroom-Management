@@ -1,5 +1,6 @@
 'use client';
 import { useState, useMemo } from 'react';
+import { parsePermissions, canInsert, canWrite, canDelete } from '../../../lib/permissions';
 import styles from '../students/students.module.css';
 import weekStyles from './schedule.module.css';
 
@@ -11,7 +12,7 @@ interface ScheduleItem {
   type: string; courseId: string | null;
   createdAt: string; updatedAt: string;
 }
-interface Props { initialItems: ScheduleItem[]; courses: Course[]; userRole: string; }
+interface Props { initialItems: ScheduleItem[]; courses: Course[]; userRole: string; userPerms: string; }
 
 const TYPE_COLORS: Record<string, { bg: string; color: string }> = {
   CLASS:   { bg: '#dbeafe', color: '#1d4ed8' },
@@ -45,7 +46,11 @@ function startOfWeek(d: Date) {
   return date;
 }
 
-export default function ScheduleClient({ initialItems, courses, userRole }: Props) {
+export default function ScheduleClient({ initialItems, courses, userRole, userPerms }: Props) {
+  const permMap = useMemo(() => parsePermissions(userPerms), [userPerms]);
+  const canIns = canInsert(permMap, 'schedule', userRole);
+  const canWri = canWrite(permMap, 'schedule', userRole);
+  const canDel = canDelete(permMap, 'schedule', userRole);
   const isAdmin = userRole === 'ADMIN';
   const [items, setItems] = useState<ScheduleItem[]>(initialItems);
   const [search, setSearch] = useState('');
@@ -171,7 +176,7 @@ export default function ScheduleClient({ initialItems, courses, userRole }: Prop
             ធាតុសរុប: <strong style={{ color: 'var(--color-accent)' }}>{items.length}</strong>
           </p>
         </div>
-        {isAdmin && <button className="btn-primary" onClick={() => openAdd()}>+ បន្ថែម</button>}
+        {canIns && <button className="btn-primary" onClick={() => openAdd()}>+ បន្ថែម</button>}
       </div>
 
       <div className={styles.toolbar}>
@@ -224,14 +229,14 @@ export default function ScheduleClient({ initialItems, courses, userRole }: Prop
                     <div className={weekStyles.dayName}>{DAY_NAMES[date.getDay() === 0 ? 6 : date.getDay() - 1]}</div>
                     <div className={weekStyles.dayDate}>{date.getDate()}/{date.getMonth() + 1}</div>
                   </div>
-                  {isAdmin && (
+                  {canIns && (
                     <button type="button" className={weekStyles.addDayBtn} title="បន្ថែមកាលវិភាគថ្ងៃនេះ"
                       onClick={() => openAdd(key)}>+</button>
                   )}
                 </div>
                 <div className={weekStyles.dayBody}>
                   {dayItems.length === 0 ? (
-                    isAdmin ? (
+                    canIns ? (
                       <button type="button" className={weekStyles.dayEmptyAdd} onClick={() => openAdd(key)}>+ បន្ថែមកាលវិភាគ</button>
                     ) : (
                       <div className={weekStyles.dayEmpty}>—</div>
@@ -241,7 +246,7 @@ export default function ScheduleClient({ initialItems, courses, userRole }: Prop
                     return (
                       <div key={s.id} className={weekStyles.eventChip}
                         style={{ background: tc.bg, color: tc.color }}
-                        onClick={() => isAdmin && openEdit(s)}
+                        onClick={() => canWri && openEdit(s)}
                         title={s.description ?? s.title}>
                         <span className={weekStyles.eventTitle}>{s.title}</span>
                         {s.startTime && <span className={weekStyles.eventTime}>{s.startTime}{s.endTime ? ` – ${s.endTime}` : ''}</span>}
@@ -262,10 +267,10 @@ export default function ScheduleClient({ initialItems, courses, userRole }: Prop
               {itemsByMonthDay.map(({ date, key, isToday, inMonth, items: dayItems }) => (
                 <div key={key}
                   className={`${weekStyles.monthCell} ${isToday ? weekStyles.monthCellToday : ''} ${!inMonth ? weekStyles.monthCellOutside : ''}`}
-                  onClick={() => isAdmin && dayItems.length === 0 && openAdd(key)}>
+                  onClick={() => canIns && dayItems.length === 0 && openAdd(key)}>
                   <div className={weekStyles.monthCellHeader}>
                     <span className={weekStyles.monthCellDate}>{date.getDate()}</span>
-                    {isAdmin && (
+                    {canIns && (
                       <button type="button" className={weekStyles.addDayBtn} title="បន្ថែមកាលវិភាគថ្ងៃនេះ"
                         onClick={(e) => { e.stopPropagation(); openAdd(key); }}>+</button>
                     )}
@@ -276,7 +281,7 @@ export default function ScheduleClient({ initialItems, courses, userRole }: Prop
                       return (
                         <div key={s.id} className={weekStyles.monthEventChip}
                           style={{ background: tc.bg, color: tc.color }}
-                          onClick={(e) => { e.stopPropagation(); if (isAdmin) openEdit(s); }}
+                          onClick={(e) => { e.stopPropagation(); if (canWri) openEdit(s); }}
                           title={s.description ?? s.title}>
                           {s.startTime && <span className={weekStyles.monthEventTime}>{s.startTime}</span>}
                           <span className={weekStyles.monthEventTitle}>{s.title}</span>
@@ -297,12 +302,12 @@ export default function ScheduleClient({ initialItems, courses, userRole }: Prop
           <div className={styles.emptyState}>
             <div className={styles.emptyIcon}>📅</div>
             <p>{search ? 'រកមិនឃើញ' : 'មិនទាន់មានកាលវិភាគទេ'}</p>
-            {isAdmin && !search && <button className="btn-primary" onClick={() => openAdd()} style={{ marginTop: 20 }}>បន្ថែមដំបូង</button>}
+            {canIns && !search && <button className="btn-primary" onClick={() => openAdd()} style={{ marginTop: 20 }}>បន្ថែមដំបូង</button>}
           </div>
         ) : (
           <table className={styles.table}>
             <thead className={styles.thead}>
-              <tr><th>#</th><th>ចំណងជើង</th><th>ប្រភេទ</th><th>ថ្ងៃចាប់ផ្ដើម</th><th>ថ្ងៃបញ្ចប់</th><th>ម៉ោង</th><th>វគ្គ</th>{isAdmin && <th>ការគ្រប់គ្រង</th>}</tr>
+              <tr><th>#</th><th>ចំណងជើង</th><th>ប្រភេទ</th><th>ថ្ងៃចាប់ផ្ដើម</th><th>ថ្ងៃបញ្ចប់</th><th>ម៉ោង</th><th>វគ្គ</th>{(canWri || canDel) && <th>ការគ្រប់គ្រង</th>}</tr>
             </thead>
             <tbody>
               {filtered.map((s, i) => {
@@ -324,11 +329,11 @@ export default function ScheduleClient({ initialItems, courses, userRole }: Prop
                     <td className={styles.mutedCell}>
                       {s.courseId ? (courses.find(c => c.id === s.courseId)?.name ?? '—') : '—'}
                     </td>
-                    {isAdmin && (
+                    {(canWri || canDel) && (
                       <td>
                         <div className={styles.actionGroup}>
-                          <button className={`${styles.actionBtn} ${styles.editBtn}`} onClick={() => openEdit(s)}>✏️</button>
-                          <button className={`${styles.actionBtn} ${styles.deleteBtn}`} onClick={() => setDeleteTarget(s.id)}>🗑️</button>
+                          {canWri && <button className={`${styles.actionBtn} ${styles.editBtn}`} onClick={() => openEdit(s)}>✏️</button>}
+                          {canDel && <button className={`${styles.actionBtn} ${styles.deleteBtn}`} onClick={() => setDeleteTarget(s.id)}>🗑️</button>}
                         </div>
                       </td>
                     )}

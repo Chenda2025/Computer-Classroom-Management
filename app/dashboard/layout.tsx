@@ -2,6 +2,7 @@ import styles from './dashboard.module.css';
 import Sidebar from '../../components/Sidebar';
 import { getSession } from '../../lib/auth';
 import { prisma } from '../../lib/prisma';
+import { parsePermissions } from '../../lib/permissions';
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const session = await getSession();
@@ -11,6 +12,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
     email: (session?.email as string) || '',
     role: (session?.role as string) || 'MONITOR',
     photoUrl: undefined as string | undefined,
+    permissions: '{}',
   };
 
   // Always fetch fresh user data for current photo and accurate name
@@ -18,7 +20,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
     try {
       const dbUser = await prisma.user.findUnique({
         where: { id: session.id as string },
-        select: { name: true, email: true, role: true, photoUrl: true },
+        select: { name: true, email: true, role: true, photoUrl: true, permissions: true },
       });
       if (dbUser) {
         userInfo = {
@@ -26,6 +28,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
           email: dbUser.email,
           role: dbUser.role,
           photoUrl: dbUser.photoUrl ?? undefined,
+          permissions: dbUser.permissions ?? '{}',
         };
       }
     } catch {}
@@ -38,7 +41,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   return (
     <div className={styles.dashboardContainer}>
-      <Sidebar user={userInfo} pendingCount={pendingCount} />
+      <Sidebar user={userInfo} pendingCount={pendingCount} permMap={parsePermissions(userInfo.permissions)} />
       <main className={styles.mainContent}>
         {children}
       </main>

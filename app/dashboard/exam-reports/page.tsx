@@ -15,6 +15,7 @@ export default async function ExamReportsPage() {
   await prisma.examResult.deleteMany({ where: { createdAt: { lt: cutoff } } });
 
   const results = await prisma.examResult.findMany({
+    take: 1000,
     orderBy: { createdAt: 'desc' },
     include: {
       student: { select: { id: true, studentCode: true, name: true, photoUrl: true, gender: true } },

@@ -1,10 +1,10 @@
 import { redirect } from 'next/navigation';
-import { getSession } from '../../../lib/auth';
 import { prisma } from '../../../lib/prisma';
+import { getSessionUser } from '../../../lib/getSessionUser';
 import AttendanceClient from './AttendanceClient';
 
 export default async function AttendancePage() {
-  const session = await getSession();
+  const session = await getSessionUser();
   if (!session) redirect('/');
 
   const courses = await prisma.course.findMany({
@@ -23,7 +23,8 @@ export default async function AttendancePage() {
     <AttendanceClient
       courses={courses}
       today={today}
-      userRole={session.role as string}
+      userRole={session.role}
+      userPerms={session.permissions}
     />
   );
 }

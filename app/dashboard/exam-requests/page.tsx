@@ -1,10 +1,10 @@
 import { redirect } from 'next/navigation';
-import { getSession } from '../../../lib/auth';
 import { prisma } from '../../../lib/prisma';
+import { getSessionUser } from '../../../lib/getSessionUser';
 import ExamRequestsClient from './ExamRequestsClient';
 
 export default async function ExamRequestsPage() {
-  const session = await getSession();
+  const session = await getSessionUser();
   if (!session) redirect('/');
 
   const [requests, finishedResults, students, exams, courses] = await Promise.all([
@@ -43,7 +43,8 @@ export default async function ExamRequestsPage() {
       students={students}
       exams={exams}
       courses={courses}
-      userRole={session.role as string}
+      userRole={session.role}
+      userPerms={session.permissions}
     />
   );
 }

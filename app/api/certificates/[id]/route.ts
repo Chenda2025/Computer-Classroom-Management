@@ -1,13 +1,12 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '../../../../lib/prisma';
-import { getSession } from '../../../../lib/auth';
+import { requireDelete } from '../../../../lib/apiAuth';
 
 type RouteContext = { params: Promise<{ id: string }> };
 
 export async function DELETE(_req: Request, { params }: RouteContext) {
-  const session = await getSession();
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  if (session.role !== 'ADMIN') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  const auth = await requireDelete('certificates');
+  if ('res' in auth) return auth.res;
 
   const { id } = await params;
   try {

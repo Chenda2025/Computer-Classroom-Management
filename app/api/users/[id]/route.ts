@@ -12,16 +12,17 @@ export async function PUT(request: Request, { params }: Ctx) {
 
   const { id } = await params;
   try {
-    const { name, role, password } = await request.json();
+    const { name, role, password, permissions } = await request.json();
     const data: Record<string, string> = {};
     if (name?.trim()) data.name = name.trim();
     if (role === 'ADMIN' || role === 'MONITOR') data.role = role;
     if (password && password.length >= 6) data.password = await bcrypt.hash(password, 10);
+    if (permissions !== undefined) data.permissions = JSON.stringify(permissions);
 
     const user = await prisma.user.update({
       where: { id },
       data,
-      select: { id: true, name: true, email: true, role: true, createdAt: true },
+      select: { id: true, name: true, email: true, role: true, permissions: true, createdAt: true },
     });
     return NextResponse.json(user);
   } catch (error: any) {

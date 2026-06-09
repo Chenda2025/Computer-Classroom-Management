@@ -1,14 +1,15 @@
 import { redirect } from 'next/navigation';
-import { getSession } from '../../../lib/auth';
 import { prisma } from '../../../lib/prisma';
+import { getSessionUser } from '../../../lib/getSessionUser';
 import ExamsClient from './ExamsClient';
 
 export default async function ExamsPage() {
-  const session = await getSession();
+  const session = await getSessionUser();
   if (!session) redirect('/');
 
   const [exams, courses] = await Promise.all([
     prisma.exam.findMany({
+      take: 1000,
       orderBy: { createdAt: 'desc' },
       include: {
         course: { select: { id: true, name: true } },
@@ -26,7 +27,8 @@ export default async function ExamsPage() {
         updatedAt: e.updatedAt.toISOString(),
       }))}
       courses={courses}
-      userRole={session.role as string}
+      userRole={session.role}
+      userPerms={session.permissions}
     />
   );
 }

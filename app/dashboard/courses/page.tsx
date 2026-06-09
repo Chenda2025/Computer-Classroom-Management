@@ -1,12 +1,12 @@
 import { redirect } from 'next/navigation';
-import { getSession } from '../../../lib/auth';
 import { prisma } from '../../../lib/prisma';
+import { getSessionUser } from '../../../lib/getSessionUser';
 import CoursesClient from './CoursesClient';
 
 const PASS_SCORE = 50;
 
 export default async function CoursesPage() {
-  const session = await getSession();
+  const session = await getSessionUser();
   if (!session) redirect('/');
 
   const [courses, students, enrollmentsForLock] = await Promise.all([
@@ -17,10 +17,12 @@ export default async function CoursesPage() {
       },
     }),
     prisma.student.findMany({
+      take: 2000,
       orderBy: { name: 'asc' },
       select: { id: true, studentCode: true, name: true, phone: true, photoUrl: true },
     }),
     prisma.enrollment.findMany({
+      take: 5000,
       select: { studentId: true },
     }),
   ]);
@@ -38,7 +40,8 @@ export default async function CoursesPage() {
       initialCourses={serializedCourses}
       allStudents={students}
       enrolledStudentIds={enrolledStudentIds}
-      userRole={session.role as string}
+      userRole={session.role}
+      userPerms={session.permissions}
     />
   );
 }

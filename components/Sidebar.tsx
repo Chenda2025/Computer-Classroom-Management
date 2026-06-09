@@ -2,12 +2,14 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import styles from '../app/dashboard/dashboard.module.css';
+import { canView, type PermMap } from '../lib/permissions';
 
 interface UserInfo {
   name: string;
   email: string;
   role: string;
   photoUrl?: string;
+  permissions?: string;
 }
 
 const NAV_GROUPS = [
@@ -47,8 +49,9 @@ const NAV_GROUPS = [
   },
 ];
 
-export default function Sidebar({ user, pendingCount = 0 }: { user?: UserInfo; pendingCount?: number }) {
+export default function Sidebar({ user, pendingCount = 0, permMap = {} }: { user?: UserInfo; pendingCount?: number; permMap?: PermMap }) {
   const pathname = usePathname();
+  const role = user?.role ?? 'MONITOR';
 
   const isActive = (href: string) =>
     href === '/dashboard' ? pathname === '/dashboard' : pathname.startsWith(href);
@@ -92,7 +95,12 @@ export default function Sidebar({ user, pendingCount = 0 }: { user?: UserInfo; p
         {NAV_GROUPS.map((group, gi) => (
           <div key={gi} className={styles.navGroup}>
             <span className={styles.navGroupLabel}>{group.label}</span>
-            {group.items.map(item => {
+            {group.items.filter(item => {
+              // Extract module key from href (e.g. /dashboard/students -> students)
+              const moduleKey = item.href.replace('/dashboard/', '').replace('/dashboard', '');
+              if (!moduleKey) return true; // dashboard home always visible
+              return canView(permMap, moduleKey, role);
+            }).map(item => {
               const badge = (item as any).badge && pendingCount > 0 ? pendingCount : 0;
               return (
                 <Link

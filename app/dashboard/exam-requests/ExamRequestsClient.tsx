@@ -1,5 +1,6 @@
 'use client';
 import { useState, useMemo, useEffect, useRef } from 'react';
+import { parsePermissions, canInsert, canWrite, canDelete } from '../../../lib/permissions';
 import styles from '../students/students.module.css';
 import cardStyles from './exam-requests.module.css';
 import ExportModal from './ExportModal';
@@ -23,7 +24,7 @@ interface Request {
 interface Student extends StudentRef { enrollments: { courseId: string }[]; }
 interface ExamOption extends ExamRef { courseId: string; }
 interface Course { id: string; name: string; }
-interface Props { initialRequests: Request[]; students: Student[]; exams: ExamOption[]; courses: Course[]; userRole: string; }
+interface Props { initialRequests: Request[]; students: Student[]; exams: ExamOption[]; courses: Course[]; userRole: string; userPerms: string; }
 
 const STATUS_STYLE: Record<string, { color: string; bg: string; label: string }> = {
   PENDING:  { color: '#92400e', bg: '#fef3c7', label: 'រង់ចាំ' },
@@ -31,8 +32,11 @@ const STATUS_STYLE: Record<string, { color: string; bg: string; label: string }>
   REJECTED: { color: '#dc2626', bg: '#fee2e2', label: 'បដិសេធ' },
 };
 
-export default function ExamRequestsClient({ initialRequests, students, exams, courses, userRole }: Props) {
-  const isAdmin = userRole === 'ADMIN';
+export default function ExamRequestsClient({ initialRequests, students, exams, courses, userRole, userPerms }: Props) {
+  const permMap = useMemo(() => parsePermissions(userPerms), [userPerms]);
+  const canIns = canInsert(permMap, 'exam-requests', userRole);
+  const canWri = canWrite(permMap, 'exam-requests', userRole);
+  const canDel = canDelete(permMap, 'exam-requests', userRole);
   const [requests, setRequests] = useState<Request[]>(initialRequests);
   const [search, setSearch] = useState('');
   const [filterCourse, setFilterCourse] = useState('');
@@ -167,7 +171,7 @@ export default function ExamRequestsClient({ initialRequests, students, exams, c
           </p>
         </div>
         <div style={{ display: 'flex', gap: '12px' }}>
-          {(isAdmin || userRole === 'MONITOR') && (
+          {(userRole === 'ADMIN' || userRole === 'MONITOR') && (
             <button
               className={styles.exportHeaderBtn}
               onClick={() => setExportModal(true)}
@@ -176,7 +180,7 @@ export default function ExamRequestsClient({ initialRequests, students, exams, c
               📤 ទាញយករបាយការណ៍
             </button>
           )}
-          {isAdmin && <button className="btn-primary" onClick={() => { setError(''); setStep(1); setStudentSearch(''); setForm({ courseId: '', studentIds: [], examId: '', note: '' }); setModal(true); }}>+ ស្នើរសូម</button>}
+          {canIns && <button className="btn-primary" onClick={() => { setError(''); setStep(1); setStudentSearch(''); setForm({ courseId: '', studentIds: [], examId: '', note: '' }); setModal(true); }}>+ ស្នើរសូម</button>}
         </div>
       </div>
 
@@ -307,15 +311,15 @@ export default function ExamRequestsClient({ initialRequests, students, exams, c
                         </div>
                       </div>
 
-                      {isAdmin && (
+                      {(canWri || canDel) && (
                         <div className={cardStyles.cardActions}>
-                          {r.status !== 'APPROVED' && (
+                          {canWri && r.status !== 'APPROVED' && (
                             <button className={`${cardStyles.statusBtn} ${cardStyles.approveBtn}`} onClick={() => updateStatus(r.id, 'APPROVED')}>✓ អនុម័ត</button>
                           )}
-                          {r.status !== 'REJECTED' && (
+                          {canWri && r.status !== 'REJECTED' && (
                             <button className={`${cardStyles.statusBtn} ${cardStyles.rejectBtn}`} onClick={() => updateStatus(r.id, 'REJECTED')}>✗ បដិសេធ</button>
                           )}
-                          <button className={`${cardStyles.iconBtn} ${cardStyles.deleteBtn}`} onClick={() => handleDelete(r.id)} title="លុប">🗑️</button>
+                          {canDel && <button className={`${cardStyles.iconBtn} ${cardStyles.deleteBtn}`} onClick={() => handleDelete(r.id)} title="លុប">🗑️</button>}
                         </div>
                       )}
                     </div>

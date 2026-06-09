@@ -1,5 +1,6 @@
 'use client';
 import { useState, useMemo } from 'react';
+import { parsePermissions, canInsert, canWrite, canDelete } from '../../../lib/permissions';
 import styles from '../students/students.module.css';
 import tc from './teachers.module.css';
 import ExportModal from './ExportModal';
@@ -29,6 +30,7 @@ interface Props {
   initialTeachers: Teacher[];
   courses: Course[];
   userRole: string;
+  userPerms: string;
 }
 
 const EMPTY = {
@@ -58,8 +60,11 @@ function subjectColor(subject: string | null) {
   return '#6366f1';
 }
 
-export default function TeachersClient({ initialTeachers, courses, userRole }: Props) {
-  const isAdmin = userRole === 'ADMIN';
+export default function TeachersClient({ initialTeachers, courses, userRole, userPerms }: Props) {
+  const permMap = useMemo(() => parsePermissions(userPerms), [userPerms]);
+  const canIns = canInsert(permMap, 'teachers', userRole);
+  const canWri = canWrite(permMap, 'teachers', userRole);
+  const canDel = canDelete(permMap, 'teachers', userRole);
   const [teachers, setTeachers] = useState<Teacher[]>(initialTeachers);
   const [search, setSearch] = useState('');
   const [filterSubject, setFilterSubject] = useState('');
@@ -268,7 +273,7 @@ export default function TeachersClient({ initialTeachers, courses, userRole }: P
           <button className="btn-secondary" onClick={() => setExportModal(true)}>
             📥 មើលរបាយការណ៍/នាំចេញ
           </button>
-          {isAdmin && <button className="btn-primary" onClick={openAdd}>+ បន្ថែមគ្រូ</button>}
+          {canIns && <button className="btn-primary" onClick={openAdd}>+ បន្ថែមគ្រូ</button>}
         </div>
       </div>
 
@@ -334,7 +339,7 @@ export default function TeachersClient({ initialTeachers, courses, userRole }: P
         <div className={styles.emptyState}>
           <div className={styles.emptyIcon}>👨‍🏫</div>
           <p>{(search || filterSubject || filterGender) ? 'រកមិនឃើញគ្រូដែលត្រូវនឹងការត្រង' : 'មិនទាន់មានគ្រូបង្រៀនទេ'}</p>
-          {isAdmin && !search && !filterSubject && !filterGender && (
+          {canIns && !search && !filterSubject && !filterGender && (
             <button className="btn-primary" onClick={openAdd} style={{ marginTop: 20 }}>បន្ថែមគ្រូដំបូង</button>
           )}
         </div>
@@ -354,7 +359,7 @@ export default function TeachersClient({ initialTeachers, courses, userRole }: P
                 style={{ '--card-color': color, '--card-color-light': colorLight, animationDelay: `${i * 45}ms` } as React.CSSProperties}
               >
                 {/* Checkbox */}
-                {isAdmin && (
+                {canDel && (
                   <input type="checkbox" className={tc.cardCheck}
                     checked={selectedIds.has(t.id)}
                     onChange={() => toggleSelect(t.id)} />
@@ -408,13 +413,13 @@ export default function TeachersClient({ initialTeachers, courses, userRole }: P
                 <div className={tc.cardFooter}>
                   <button className={`${styles.actionBtn} ${tc.footerBtn} ${tc.infoBtn}`}
                     onClick={() => setInfoTeacher(t)} title="ព័ត៌មានលម្អិត">👁️ ព័ត៌មាន</button>
-                  {isAdmin && (
-                    <>
-                      <button className={`${styles.actionBtn} ${styles.editBtn} ${tc.footerBtn}`}
-                        onClick={() => openEdit(t)}>✏️ កែប្រែ</button>
-                      <button className={`${styles.actionBtn} ${styles.deleteBtn} ${tc.footerBtn}`}
-                        onClick={() => setDeleteTarget(t.id)}>🗑️ លុប</button>
-                    </>
+                  {canWri && (
+                    <button className={`${styles.actionBtn} ${styles.editBtn} ${tc.footerBtn}`}
+                      onClick={() => openEdit(t)}>✏️ កែប្រែ</button>
+                  )}
+                  {canDel && (
+                    <button className={`${styles.actionBtn} ${styles.deleteBtn} ${tc.footerBtn}`}
+                      onClick={() => setDeleteTarget(t.id)}>🗑️ លុប</button>
                   )}
                 </div>
               </div>
@@ -426,7 +431,7 @@ export default function TeachersClient({ initialTeachers, courses, userRole }: P
       <PaginationBar />
 
       {/* ── Bulk bar ── */}
-      {isAdmin && selectedIds.size > 0 && (
+      {canDel && selectedIds.size > 0 && (
         <div className={styles.bulkBar}>
           <span className={styles.bulkCount}>✓ បានជ្រើសរើស {selectedIds.size} នាក់</span>
           <div style={{ display: 'flex', gap: 8 }}>

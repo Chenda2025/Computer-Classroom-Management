@@ -1,5 +1,6 @@
 'use client';
 import { useState, useMemo } from 'react';
+import { parsePermissions, canInsert } from '../../../lib/permissions';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import styles from '../students/students.module.css';
@@ -30,11 +31,12 @@ interface StudentFolder {
 }
 interface StudentOption { id: string; studentCode: string; name: string; photoUrl?: string | null; }
 interface CourseOption { id: string; name: string; students: StudentOption[]; }
-interface Props { students: StudentFolder[]; courses: CourseOption[]; userRole: string; }
+interface Props { students: StudentFolder[]; courses: CourseOption[]; userRole: string; userPerms: string; }
 
-export default function PortfoliosClient({ students, courses, userRole }: Props) {
+export default function PortfoliosClient({ students, courses, userRole, userPerms }: Props) {
   const router = useRouter();
-  const isAdmin = userRole === 'ADMIN';
+  const permMap = useMemo(() => parsePermissions(userPerms), [userPerms]);
+  const canIns = canInsert(permMap, 'portfolios', userRole);
   const [search, setSearch] = useState('');
   const [picker, setPicker] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState('');
@@ -76,7 +78,7 @@ export default function PortfoliosClient({ students, courses, userRole }: Props)
             {' • '}ស្នាដៃសរុប <strong style={{ color: 'var(--color-accent)' }}>{totalWorks}</strong>
           </p>
         </div>
-        {isAdmin && <button className="btn-primary" onClick={openPicker}>+ ជ្រើសសិស្ស</button>}
+        {canIns && <button className="btn-primary" onClick={openPicker}>+ ជ្រើសសិស្ស</button>}
       </div>
 
       <div className={styles.toolbar}>
