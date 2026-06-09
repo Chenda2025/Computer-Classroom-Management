@@ -134,7 +134,6 @@ export default function AttendanceClient({ courses, today, userRole }: Props) {
   }, [isAdmin, isMonitor, testTime]);
 
   useEffect(() => {
-    let triggered05 = false;
     let triggered20 = false;
 
     const checkReminder = async () => {
@@ -177,17 +176,11 @@ export default function AttendanceClient({ courses, today, userRole }: Props) {
         } catch (err) { console.error('Failed to check schedule for reminder', err); }
       };
 
-      if (h === 19 && m === 5 && !triggered05) {
-        triggered05 = true;
-        triggerAlert('⏰ ម៉ោង ៧:០៥ ដល់ម៉ោងយកវត្តមានហើយ!');
-      }
-      
       if (h === 19 && m === 20 && !triggered20) {
         triggered20 = true;
         triggerAlert('⏰ ម៉ោង ៧:២០ នាទីហើយ! សូមប្រធានថ្នាក់រួសរាន់ស្រង់វត្តមាន ក្រែងលោភ្លេច!');
       }
 
-      if (h !== 19 || m !== 5) triggered05 = false;
       if (h !== 19 || m !== 20) triggered20 = false;
     };
     
