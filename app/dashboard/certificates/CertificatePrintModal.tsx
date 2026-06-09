@@ -422,7 +422,7 @@ export default function CertificatePrintModal({ certificate, onClose }: Props) {
     <>
       <style>{`
         @media print {
-          @page { size: A4 landscape; margin: 0; }
+          @page { size: 297mm 210mm; margin: 0; }
           .cert-guides { display: none !important; }
           body { background: #fff !important; margin: 0; padding: 0; }
           body > :not(#cert-print-area) { display: none !important; }
@@ -459,9 +459,9 @@ export default function CertificatePrintModal({ certificate, onClose }: Props) {
           position: relative;
           width: 100%; height: 100%;
           background-color: #fff;
-          background-image: 
-            radial-gradient(circle at center, rgba(255,255,255,0.95) 20%, rgba(253,251,242,0.95) 100%),
-            url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M20 20.5V18H0v-2h20v-2H0v-2h20v-2H0V8h20V6H0V4h20V2H0V0h22v20h2V0h2v20h2V0h2v20h2V0h2v20h2V0h2v20h2v2H20v-1.5zM0 20h2v20H0V20zm4 0h2v20H4V20zm4 0h2v20H8V20zm4 0h2v20h-2V20zm4 0h2v20h-2V20zm4 4h20v2H20v-2zm0 4h20v2H20v-2zm0 4h20v2H20v-2zm0 4h20v2H20v-2z' fill='%23c5a059' fill-opacity='0.08' fill-rule='evenodd'/%3E%3C/svg%3E");
+          background-image: url('/premium-bg.png');
+          background-size: cover;
+          background-position: center;
           z-index: 1;
         }
 
