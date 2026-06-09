@@ -422,7 +422,7 @@ export default function CertificatePrintModal({ certificate, onClose }: Props) {
     <>
       <style>{`
         @media print {
-          @page { size: 297mm 210mm; margin: 0; }
+          @page { size: A4 landscape; margin: 0; }
           .cert-guides { display: none !important; }
           body { background: #fff !important; margin: 0; padding: 0; }
           body > :not(#cert-print-area) { display: none !important; }
