@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import html2canvas from 'html2canvas';
 
 interface ExamResult { id: string; score: number; createdAt: string; exam: { course: { name: string }, questions?: { points: number }[] } }
 interface ExamParticipation { id: string; currentScore: number; createdAt: string; session: { exam: { course: { name: string }, questions?: { points: number }[] } }; }
@@ -43,6 +44,8 @@ export default function CertificatePrintModal({ certificate, onClose }: Props) {
   const [showSettings, setShowSettings] = useState(false);
   const [showGuides, setShowGuides] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [sendingTelegram, setSendingTelegram] = useState(false);
+  const certRef = useRef<HTMLDivElement>(null);
 
   // Global variables
   const [globalGrade, setGlobalGrade] = useState('');
@@ -79,6 +82,45 @@ export default function CertificatePrintModal({ certificate, onClose }: Props) {
   }, [loaded, offsetX, offsetY, customFields, customImages, globalGrade, globalStartDate, globalEndDate, globalLunarDate]);
 
   const handlePrint = () => window.print();
+
+  const handleSendTelegram = async () => {
+    if (!certRef.current) return;
+    
+    const wasShowingGuides = showGuides;
+    if (wasShowingGuides) setShowGuides(false);
+    
+    setSendingTelegram(true);
+    
+    try {
+      await new Promise(res => setTimeout(res, 50));
+      
+      const canvas = await html2canvas(certRef.current, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff'
+      });
+      
+      const photoBase64 = canvas.toDataURL('image/png');
+      
+      const res = await fetch('/api/telegram/send-photo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          photoBase64,
+          caption: `🎓 វិញ្ញាបនបត្រ: ${certificate.student.name} (${certificate.student.studentCode})\nវគ្គ: ${certificate.title}`
+        })
+      });
+      
+      if (!res.ok) throw new Error('បរាជ័យក្នុងការផ្ញើ');
+      alert('បានផ្ញើទៅកាន់ Telegram ដោយជោគជ័យ!');
+    } catch (err) {
+      console.error(err);
+      alert('មានបញ្ហាក្នុងការផ្ញើទៅកាន់ Telegram');
+    } finally {
+      if (wasShowingGuides) setShowGuides(true);
+      setSendingTelegram(false);
+    }
+  };
 
   // === Custom text field handlers ===
   const FONT_OPTIONS = [
@@ -633,6 +675,9 @@ export default function CertificatePrintModal({ certificate, onClose }: Props) {
               📏 បន្ទាត់កណ្ដាល
             </button>
             <button className="print-btn" onClick={handlePrint}>🖨️ បោះពុម្ព</button>
+            <button className="print-btn" style={{ background: '#3b82f6', boxShadow: '0 2px 8px rgba(59,130,246,0.4)' }} onClick={handleSendTelegram} disabled={sendingTelegram}>
+              {sendingTelegram ? 'កំពុងផ្ញើ...' : '✈️ ផ្ញើទៅ Telegram'}
+            </button>
             <button className="close-btn" onClick={onClose}>✕</button>
           </div>
 
@@ -852,7 +897,7 @@ export default function CertificatePrintModal({ certificate, onClose }: Props) {
             </div>
           )}
 
-          <div className="cert-preview-container" onClick={e => { e.stopPropagation(); setShowSettings(false); }}>
+          <div className="cert-preview-container" ref={certRef} onClick={e => { e.stopPropagation(); setShowSettings(false); }}>
             {renderCertificate(true)}
           </div>
         </div>,
