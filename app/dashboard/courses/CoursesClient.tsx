@@ -19,6 +19,7 @@ interface StudentSummary {
   studentCode: string;
   name: string;
   phone: string | null;
+  photoUrl: string | null;
 }
 
 interface EnrolledStudent extends StudentSummary {
@@ -84,6 +85,12 @@ export default function CoursesClient({ initialCourses, allStudents, enrolledStu
   const [scoreInputs, setScoreInputs] = useState<Record<string, string>>({});
   const [savingScoreId, setSavingScoreId] = useState<string | null>(null);
   const [scoreError, setScoreError] = useState('');
+  const [scoreSuccess, setScoreSuccess] = useState('');
+
+  const [examReqId, setExamReqId] = useState<string | null>(null);
+  const [examReqDoneIds, setExamReqDoneIds] = useState<Set<string>>(new Set());
+  const [selectedExamReqIds, setSelectedExamReqIds] = useState<Set<string>>(new Set());
+  const [bulkExamReqLoading, setBulkExamReqLoading] = useState(false);
 
   const [search, setSearch] = useState('');
   const [enrollError, setEnrollError] = useState('');
@@ -129,6 +136,11 @@ export default function CoursesClient({ initialCourses, allStudents, enrolledStu
   const nextOrder = useMemo(
     () => courses.reduce((max, c) => Math.max(max, c.order ?? 0), 0) + 1,
     [courses]
+  );
+
+  const eligibleForExamReq = useMemo(
+    () => enrolled.filter(s => s.examId && !examReqDoneIds.has(s.id)),
+    [enrolled, examReqDoneIds]
   );
 
   const openAdd = () => { setForm({ ...EMPTY_FORM, order: String(nextOrder) }); setFormError(''); setCourseModal('add'); };
@@ -222,21 +234,41 @@ export default function CoursesClient({ initialCourses, allStudents, enrolledStu
     }
   };
 
-  const openAssign = useCallback(async (course: Course) => {
-    setAssignCourse(course); setStudentSearch(''); setEnrolled([]); setEnrollLoading(true); setEnrollError('');
-    setScoreInputs({}); setScoreError('');
+  const loadEnrolled = useCallback(async (courseId: string) => {
+    setEnrolled([]); setEnrollLoading(true); setEnrollError('');
+    setScoreInputs({}); setScoreError(''); setScoreSuccess('');
+    setExamReqDoneIds(new Set()); setExamReqId(null); setSelectedExamReqIds(new Set());
     try {
-      const res = await fetch(`/api/courses/${course.id}/enrollments`);
-      const data = await res.json();
-      setEnrolled(res.ok && Array.isArray(data) ? data : []);
-    } catch {
-      setEnrolled([]);
+      const res = await fetch(`/api/courses/${courseId}/enrollments`);
+      const text = await res.text();
+      if (!text) {
+        setEnrollError(`Server error (${res.status}) — empty response`);
+        return;
+      }
+      let data: any;
+      try { data = JSON.parse(text); } catch {
+        setEnrollError(`Server error (${res.status}): ${text.slice(0, 120)}`);
+        return;
+      }
+      if (!res.ok) {
+        setEnrollError(data?.error ?? `Load failed (${res.status})`);
+        return;
+      }
+      setEnrolled(Array.isArray(data) ? data : []);
+    } catch (err: any) {
+      setEnrollError('មានបញ្ហាបណ្ដាញ: ' + (err?.message ?? 'unknown'));
     } finally { setEnrollLoading(false); }
   }, []);
 
+  const openAssign = useCallback(async (course: Course) => {
+    setAssignCourse(course); setStudentSearch('');
+    await loadEnrolled(course.id);
+  }, [loadEnrolled]);
+
   const closeAssign = () => {
     setAssignCourse(null); setStudentSearch(''); setEnrollError('');
-    setScoreInputs({}); setScoreError('');
+    setScoreInputs({}); setScoreError(''); setScoreSuccess('');
+    setExamReqDoneIds(new Set()); setExamReqId(null); setSelectedExamReqIds(new Set());
   };
 
   const handleEnroll = async (studentId: string) => {
@@ -304,13 +336,64 @@ export default function CoursesClient({ initialCourses, allStudents, enrolledStu
       });
       const data = await res.json();
       if (!res.ok) { setScoreError(data.error ?? 'មានបញ្ហាកើតឡើង'); return; }
-      setEnrolled(prev => prev.map(s => s.id === studentId
-        ? { ...s, examId: data.examId, examTitle: data.examTitle, score: data.score, passed: data.passed }
-        : s));
+
+      if (data.promoted) {
+        setEnrolled(prev => prev.filter(s => s.id !== studentId));
+        setCourses(prev => prev.map(c =>
+          c.id === courseId
+            ? { ...c, _count: { ...c._count, enrollments: Math.max(0, c._count.enrollments - 1) } }
+            : c
+        ));
+        setScoreSuccess(`✓ សិស្សបានជ្រើសជាប់ → បានបន្តទៅ "${data.nextCourseName}"`);
+      } else {
+        setEnrolled(prev => prev.map(s => s.id === studentId
+          ? { ...s, examId: data.examId, examTitle: data.examTitle, score: data.score, passed: data.passed }
+          : s));
+      }
       setScoreInputs(prev => { const n = { ...prev }; delete n[studentId]; return n; });
       router.refresh();
     } catch { setScoreError('មានបញ្ហាបណ្ដាញ');
     } finally { setSavingScoreId(null); }
+  };
+
+  const handlePromoteToExamRequest = async (studentId: string, examId: string) => {
+    setExamReqId(studentId);
+    setEnrollError('');
+    try {
+      const res = await fetch('/api/exam-requests', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ studentIds: [studentId], examId }),
+      });
+      const data = await res.json();
+      if (!res.ok && res.status !== 409) { setEnrollError(data.error ?? 'មានបញ្ហា'); return; }
+      setExamReqDoneIds(prev => new Set([...prev, studentId]));
+    } catch { setEnrollError('មានបញ្ហាបណ្ដាញ');
+    } finally { setExamReqId(null); }
+  };
+
+  const handleBulkPromoteExamRequest = async (ids: string[]) => {
+    if (!ids.length) return;
+    setBulkExamReqLoading(true);
+    setEnrollError('');
+    try {
+      const byExam: Record<string, string[]> = {};
+      for (const sId of ids) {
+        const s = enrolled.find(e => e.id === sId);
+        if (!s?.examId) continue;
+        (byExam[s.examId] ??= []).push(sId);
+      }
+      for (const [examId, sIds] of Object.entries(byExam)) {
+        const res = await fetch('/api/exam-requests', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ studentIds: sIds, examId }),
+        });
+        const data = await res.json();
+        if (!res.ok && res.status !== 409) { setEnrollError(data.error ?? 'មានបញ្ហា'); return; }
+        setExamReqDoneIds(prev => new Set([...prev, ...sIds]));
+      }
+      setSelectedExamReqIds(new Set());
+    } catch { setEnrollError('មានបញ្ហាបណ្ដាញ');
+    } finally { setBulkExamReqLoading(false); }
   };
 
   return (
@@ -790,7 +873,20 @@ export default function CoursesClient({ initialCourses, allStudents, enrolledStu
             </div>
 
             {(enrollError || scoreError) && (
-              <div className={styles.enrollError}>⚠️ {enrollError || scoreError}</div>
+              <div className={styles.enrollError} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span>⚠️ {enrollError || scoreError}</span>
+                {enrollError && assignCourse && (
+                  <button
+                    onClick={() => loadEnrolled(assignCourse.id)}
+                    style={{ background: 'none', border: '1px solid rgba(220,38,38,0.4)', borderRadius: 6, padding: '2px 10px', cursor: 'pointer', fontSize: '0.75rem', color: '#dc2626', marginLeft: 10 }}
+                  >
+                    🔄 ព្យាយាមម្ដងទៀត
+                  </button>
+                )}
+              </div>
+            )}
+            {scoreSuccess && (
+              <div className={styles.enrollSuccess}>{scoreSuccess}</div>
             )}
 
             <div className={styles.assignPanels}>
@@ -804,9 +900,39 @@ export default function CoursesClient({ initialCourses, allStudents, enrolledStu
                     {enrolled.length}
                   </span>
                 </div>
+                {isAdmin && eligibleForExamReq.length > 0 && (
+                  <div className={styles.examReqBulkBar}>
+                    <label className={styles.examReqSelectAll}>
+                      <input
+                        type="checkbox"
+                        checked={selectedExamReqIds.size === eligibleForExamReq.length}
+                        onChange={e => setSelectedExamReqIds(
+                          e.target.checked ? new Set(eligibleForExamReq.map(s => s.id)) : new Set()
+                        )}
+                      />
+                      <span>ជ្រើសទាំងអស់ ({eligibleForExamReq.length})</span>
+                    </label>
+                    {selectedExamReqIds.size > 0 && (
+                      <button
+                        className={styles.examReqBulkBtn}
+                        onClick={() => handleBulkPromoteExamRequest(Array.from(selectedExamReqIds))}
+                        disabled={bulkExamReqLoading}
+                      >
+                        {bulkExamReqLoading ? '⏳...' : `📋 ផ្ញើ ${selectedExamReqIds.size} នាក់`}
+                      </button>
+                    )}
+                    <button
+                      className={styles.examReqAllBtn}
+                      onClick={() => handleBulkPromoteExamRequest(eligibleForExamReq.map(s => s.id))}
+                      disabled={bulkExamReqLoading}
+                    >
+                      {bulkExamReqLoading ? '⏳...' : `📋 ផ្ញើទាំងអស់`}
+                    </button>
+                  </div>
+                )}
                 <div className={styles.panelList}>
                   {enrollLoading && <div className={styles.loadingRow}>កំពុងផ្ទុក...</div>}
-                  {!enrollLoading && enrolled.length === 0 && (
+                  {!enrollLoading && !enrollError && enrolled.length === 0 && (
                     <div className={styles.panelEmpty}>
                       <span>🎓</span>
                       <span>មិនទាន់មានសិស្សណាមួយ</span>
@@ -814,11 +940,37 @@ export default function CoursesClient({ initialCourses, allStudents, enrolledStu
                   )}
                   {!enrollLoading && enrolled.map(student => (
                     <div key={student.id} className={styles.studentRow}>
-                      <div className={styles.studentAvatar}>{initials(student.name)}</div>
+                      {isAdmin && student.examId && !examReqDoneIds.has(student.id) && (
+                        <input
+                          type="checkbox"
+                          className={styles.examReqCheck}
+                          checked={selectedExamReqIds.has(student.id)}
+                          onChange={e => setSelectedExamReqIds(prev => {
+                            const n = new Set(prev);
+                            e.target.checked ? n.add(student.id) : n.delete(student.id);
+                            return n;
+                          })}
+                        />
+                      )}
+                      <div className={`${styles.studentAvatar} ${student.photoUrl ? styles.studentAvatarPhoto : ''}`}>
+                        {student.photoUrl
+                          ? <img src={student.photoUrl} className={styles.studentAvatarImg} alt="" onError={e => { (e.currentTarget.parentElement as HTMLElement).classList.remove(styles.studentAvatarPhoto); e.currentTarget.remove(); }} />
+                          : initials(student.name)}
+                      </div>
                       <div className={styles.studentInfo}>
                         <div className={styles.studentName}>{student.name}</div>
                         <div className={styles.studentCode}>{student.studentCode}</div>
                       </div>
+                      {isAdmin && student.examId && (
+                        <button
+                          className={`${styles.rowActionBtn} ${examReqDoneIds.has(student.id) ? styles.examReqDoneBtn : styles.examReqBtn}`}
+                          onClick={() => handlePromoteToExamRequest(student.id, student.examId!)}
+                          disabled={examReqId === student.id || examReqDoneIds.has(student.id)}
+                          title="ផ្ញើស្នើរប្រឡង"
+                        >
+                          {examReqId === student.id ? '…' : examReqDoneIds.has(student.id) ? '✓' : '📋'}
+                        </button>
+                      )}
                       {isAdmin && (
                         <button
                           className={`${styles.rowActionBtn} ${styles.removeRowBtn}`}
@@ -908,8 +1060,10 @@ export default function CoursesClient({ initialCourses, allStudents, enrolledStu
                   )}
                   {available.map(student => (
                     <div key={student.id} className={styles.studentRow}>
-                      <div className={`${styles.studentAvatar} ${styles.studentAvatarAvail}`}>
-                        {initials(student.name)}
+                      <div className={`${styles.studentAvatar} ${student.photoUrl ? styles.studentAvatarPhoto : styles.studentAvatarAvail}`}>
+                        {student.photoUrl
+                          ? <img src={student.photoUrl} className={styles.studentAvatarImg} alt="" onError={e => { const p = e.currentTarget.parentElement as HTMLElement; p.classList.remove(styles.studentAvatarPhoto); p.classList.add(styles.studentAvatarAvail); e.currentTarget.remove(); }} />
+                          : initials(student.name)}
                       </div>
                       <div className={styles.studentInfo}>
                         <div className={styles.studentName}>{student.name}</div>

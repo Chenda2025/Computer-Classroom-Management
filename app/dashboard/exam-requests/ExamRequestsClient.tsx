@@ -35,16 +35,32 @@ export default function ExamRequestsClient({ initialRequests, students, exams, c
   const isAdmin = userRole === 'ADMIN';
   const [requests, setRequests] = useState<Request[]>(initialRequests);
   const [search, setSearch] = useState('');
+  const [filterCourse, setFilterCourse] = useState('');
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [dropdownSearch, setDropdownSearch] = useState('');
   const [modal, setModal] = useState(false);
-  const [form, setForm] = useState({ courseId: '', studentId: '', examId: '', note: '' });
+  const [step, setStep] = useState<1 | 2>(1);
+  const [form, setForm] = useState({ courseId: '', studentIds: [] as string[], examId: '', note: '' });
+  const [studentSearch, setStudentSearch] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [examsLoading, setExamsLoading] = useState(false);
   const [exportModal, setExportModal] = useState(false);
   const examsLoadingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => () => {
     if (examsLoadingTimer.current) clearTimeout(examsLoadingTimer.current);
+  }, []);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
   }, []);
 
   const studentsInCourse = useMemo(
@@ -55,13 +71,28 @@ export default function ExamRequestsClient({ initialRequests, students, exams, c
     () => exams.filter(e => e.courseId === form.courseId),
     [exams, form.courseId]
   );
-  const selectedStudent = useMemo(
-    () => students.find(s => s.id === form.studentId) ?? null,
-    [students, form.studentId]
-  );
+
+  const courseStudentCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    students.forEach(s => s.enrollments.forEach(en => {
+      counts[en.courseId] = (counts[en.courseId] ?? 0) + 1;
+    }));
+    return counts;
+  }, [students]);
+
+  const coursesWithRequests = useMemo(() => {
+    const names = new Set(requests.map(r => r.exam.course.name));
+    return courses.filter(c => names.has(c.name));
+  }, [courses, requests]);
+
+  const filteredCourseOptions = useMemo(() => {
+    if (!dropdownSearch.trim()) return coursesWithRequests;
+    const q = dropdownSearch.toLowerCase();
+    return coursesWithRequests.filter(c => c.name.toLowerCase().includes(q));
+  }, [coursesWithRequests, dropdownSearch]);
 
   const selectCourse = (courseId: string) => {
-    setForm({ courseId, studentId: '', examId: '', note: form.note });
+    setForm({ courseId, studentIds: [], examId: '', note: form.note });
     if (examsLoadingTimer.current) clearTimeout(examsLoadingTimer.current);
     if (!courseId) { setExamsLoading(false); return; }
     setExamsLoading(true);
@@ -69,14 +100,29 @@ export default function ExamRequestsClient({ initialRequests, students, exams, c
   };
 
   const filtered = useMemo(() => {
+    let result = requests;
+    if (filterCourse) {
+      const courseName = courses.find(c => c.id === filterCourse)?.name;
+      if (courseName) result = result.filter(r => r.exam.course.name === courseName);
+    }
     const q = search.toLowerCase().trim();
-    if (!q) return requests;
-    return requests.filter(r =>
+    if (!q) return result;
+    return result.filter(r =>
       r.student.name.toLowerCase().includes(q) ||
       r.exam.title.toLowerCase().includes(q) ||
       r.student.studentCode.toLowerCase().includes(q)
     );
-  }, [requests, search]);
+  }, [requests, search, filterCourse, courses]);
+
+  const groupedRequests = useMemo(() => {
+    const groups: Record<string, Request[]> = {};
+    filtered.forEach(r => {
+      const c = r.exam.course.name;
+      if (!groups[c]) groups[c] = [];
+      groups[c].push(r);
+    });
+    return groups;
+  }, [filtered]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault(); setSubmitting(true); setError('');
@@ -84,13 +130,13 @@ export default function ExamRequestsClient({ initialRequests, students, exams, c
       const res = await fetch('/api/exam-requests', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ studentId: form.studentId, examId: form.examId, note: form.note }),
+        body: JSON.stringify({ studentIds: form.studentIds, examId: form.examId, note: form.note }),
       });
       const data = await res.json();
       if (!res.ok) { setError(data.error ?? 'មានបញ្ហាកើតឡើង'); return; }
-      setRequests(prev => [data, ...prev]);
+      setRequests(prev => [...data, ...prev]);
       setModal(false);
-      setForm({ courseId: '', studentId: '', examId: '', note: '' });
+      setForm({ courseId: '', studentIds: [], examId: '', note: '' });
     } finally { setSubmitting(false); }
   };
 
@@ -130,7 +176,7 @@ export default function ExamRequestsClient({ initialRequests, students, exams, c
               📤 ទាញយករបាយការណ៍
             </button>
           )}
-          {isAdmin && <button className="btn-primary" onClick={() => { setError(''); setModal(true); }}>+ ស្នើរសូម</button>}
+          {isAdmin && <button className="btn-primary" onClick={() => { setError(''); setStep(1); setStudentSearch(''); setForm({ courseId: '', studentIds: [], examId: '', note: '' }); setModal(true); }}>+ ស្នើរសូម</button>}
         </div>
       </div>
 
@@ -141,6 +187,69 @@ export default function ExamRequestsClient({ initialRequests, students, exams, c
             placeholder="ស្វែងរកតាមឈ្មោះ, ប្រឡង..."
             value={search} onChange={e => setSearch(e.target.value)} />
         </div>
+
+        <div className={cardStyles.courseDropdown} ref={dropdownRef}>
+          <button
+            type="button"
+            className={`${cardStyles.courseDropdownTrigger} ${filterCourse ? cardStyles.courseDropdownTriggerActive : ''}`}
+            onClick={() => { setDropdownOpen(o => !o); if (!dropdownOpen) setDropdownSearch(''); }}
+          >
+            <span>📖</span>
+            <span className={cardStyles.courseDropdownLabel}>
+              {filterCourse ? courses.find(c => c.id === filterCourse)?.name : 'វគ្គទាំងអស់'}
+            </span>
+            {filterCourse ? (
+              <span
+                className={cardStyles.courseDropdownClear}
+                onClick={e => { e.stopPropagation(); setFilterCourse(''); setDropdownOpen(false); }}
+              >✕</span>
+            ) : (
+              <span className={cardStyles.courseDropdownCaret}>{dropdownOpen ? '▲' : '▼'}</span>
+            )}
+          </button>
+          {dropdownOpen && (
+            <div className={cardStyles.courseDropdownPanel}>
+              <div className={cardStyles.courseDropdownSearch}>
+                <span className={cardStyles.courseDropdownSearchIcon}>⌕</span>
+                <input
+                  type="text"
+                  autoFocus
+                  className={cardStyles.courseDropdownSearchInput}
+                  placeholder="ស្វែងរកវគ្គ..."
+                  value={dropdownSearch}
+                  onChange={e => setDropdownSearch(e.target.value)}
+                />
+              </div>
+              <div className={cardStyles.courseDropdownList}>
+                <button
+                  type="button"
+                  className={`${cardStyles.courseDropdownItem} ${!filterCourse ? cardStyles.courseDropdownItemActive : ''}`}
+                  onClick={() => { setFilterCourse(''); setDropdownOpen(false); }}
+                >
+                  <span className={cardStyles.courseDropdownItemName}>វគ្គទាំងអស់</span>
+                  <span className={cardStyles.courseDropdownCount}>{requests.length}</span>
+                </button>
+                {filteredCourseOptions.map(c => {
+                  const count = requests.filter(r => r.exam.course.name === c.name).length;
+                  return (
+                    <button
+                      key={c.id}
+                      type="button"
+                      className={`${cardStyles.courseDropdownItem} ${filterCourse === c.id ? cardStyles.courseDropdownItemActive : ''}`}
+                      onClick={() => { setFilterCourse(c.id); setDropdownOpen(false); }}
+                    >
+                      <span className={cardStyles.courseDropdownItemName}>{c.name}</span>
+                      <span className={cardStyles.courseDropdownCount}>{count}</span>
+                    </button>
+                  );
+                })}
+                {filteredCourseOptions.length === 0 && (
+                  <div className={cardStyles.courseDropdownEmpty}>រកមិនឃើញ</div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {filtered.length === 0 ? (
@@ -149,134 +258,263 @@ export default function ExamRequestsClient({ initialRequests, students, exams, c
           <p>{search ? 'រកមិនឃើញ' : 'មិនទាន់មានការស្នើរសូមទេ'}</p>
         </div>
       ) : (
-        <div className={cardStyles.requestGrid}>
-          {filtered.map((r, i) => {
-            const s = STATUS_STYLE[r.status] ?? STATUS_STYLE.PENDING;
-            const accent = STATUS_ACCENT[r.status] ?? STATUS_ACCENT.PENDING;
-            return (
-              <div
-                key={r.id}
-                className={cardStyles.requestCard}
-                style={{ '--card-accent': accent.color, '--card-accent-light': accent.light, animationDelay: `${i * 40}ms` } as React.CSSProperties}
-              >
-                <div className={cardStyles.cardBody}>
-                  <div className={cardStyles.cardTopRow}>
-                    {r.student.photoUrl ? (
-                      <img src={r.student.photoUrl} alt={r.student.name} className={cardStyles.studentAvatar} style={{ objectFit: 'cover' }} />
-                    ) : (
-                      <div className={cardStyles.studentAvatar} style={{ background: `linear-gradient(135deg, ${accent.color}, ${accent.light})` }}>
-                        {initials(r.student.name)}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+          {Object.entries(groupedRequests).map(([courseName, reqs]) => (
+            <div key={courseName} className="animate-fade-in">
+              <h3 style={{ marginBottom: '16px', color: 'var(--color-text-primary)', borderBottom: '2px solid var(--color-border)', paddingBottom: '10px', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '1.25rem' }}>
+                <span style={{ fontSize: '1.4rem' }}>📖</span> {courseName}
+                <span style={{ fontSize: '0.85rem', background: 'var(--color-primary-light, #e0e7ff)', color: 'var(--color-primary)', padding: '3px 10px', borderRadius: '20px', marginLeft: 'auto', fontWeight: 600 }}>
+                  {reqs.length} សំណើ
+                </span>
+              </h3>
+              <div className={cardStyles.requestGrid}>
+                {reqs.map((r, i) => {
+                  const s = STATUS_STYLE[r.status] ?? STATUS_STYLE.PENDING;
+                  const accent = STATUS_ACCENT[r.status] ?? STATUS_ACCENT.PENDING;
+                  return (
+                    <div
+                      key={r.id}
+                      className={cardStyles.requestCard}
+                      style={{ '--card-accent': accent.color, '--card-accent-light': accent.light, animationDelay: `${i * 40}ms` } as React.CSSProperties}
+                    >
+                      <div className={cardStyles.cardBody}>
+                        <div className={cardStyles.cardTopRow}>
+                          {r.student.photoUrl ? (
+                            <img src={r.student.photoUrl} alt={r.student.name} className={cardStyles.studentAvatar} style={{ objectFit: 'cover' }} />
+                          ) : (
+                            <div className={cardStyles.studentAvatar} style={{ background: `linear-gradient(135deg, ${accent.color}, ${accent.light})` }}>
+                              {initials(r.student.name)}
+                            </div>
+                          )}
+                          <div className={cardStyles.studentTitleWrap}>
+                            <div className={cardStyles.studentName}>{r.student.name}</div>
+                            <span className={cardStyles.studentCode}>{r.student.studentCode}</span>
+                          </div>
+                        </div>
+
+                        <div className={cardStyles.examInfo}>
+                          <span className={cardStyles.examTitle}>{r.exam.title}</span>
+                          <span className={cardStyles.courseTag}>{r.exam.course.name}</span>
+                        </div>
+
+                        {r.note && <div className={cardStyles.noteText}>📝 {r.note}</div>}
+
+                        <div className={cardStyles.badgeRow} style={{ marginTop: 12 }}>
+                          <span className={cardStyles.statusBadge} style={{ background: s.bg, color: s.color }}>
+                            <span className={cardStyles.statusDot} />
+                            {s.label}
+                          </span>
+                        </div>
                       </div>
-                    )}
-                    <div className={cardStyles.studentTitleWrap}>
-                      <div className={cardStyles.studentName}>{r.student.name}</div>
-                      <span className={cardStyles.studentCode}>{r.student.studentCode}</span>
+
+                      {isAdmin && (
+                        <div className={cardStyles.cardActions}>
+                          {r.status !== 'APPROVED' && (
+                            <button className={`${cardStyles.statusBtn} ${cardStyles.approveBtn}`} onClick={() => updateStatus(r.id, 'APPROVED')}>✓ អនុម័ត</button>
+                          )}
+                          {r.status !== 'REJECTED' && (
+                            <button className={`${cardStyles.statusBtn} ${cardStyles.rejectBtn}`} onClick={() => updateStatus(r.id, 'REJECTED')}>✗ បដិសេធ</button>
+                          )}
+                          <button className={`${cardStyles.iconBtn} ${cardStyles.deleteBtn}`} onClick={() => handleDelete(r.id)} title="លុប">🗑️</button>
+                        </div>
+                      )}
                     </div>
-                  </div>
-
-                  <div className={cardStyles.examInfo}>
-                    <span className={cardStyles.examTitle}>{r.exam.title}</span>
-                    <span className={cardStyles.courseTag}>{r.exam.course.name}</span>
-                  </div>
-
-                  {r.note && <div className={cardStyles.noteText}>📝 {r.note}</div>}
-
-                  <div className={cardStyles.badgeRow} style={{ marginTop: 12 }}>
-                    <span className={cardStyles.statusBadge} style={{ background: s.bg, color: s.color }}>
-                      <span className={cardStyles.statusDot} />
-                      {s.label}
-                    </span>
-                  </div>
-                </div>
-
-                {isAdmin && (
-                  <div className={cardStyles.cardActions}>
-                    {r.status !== 'APPROVED' && (
-                      <button className={`${cardStyles.statusBtn} ${cardStyles.approveBtn}`} onClick={() => updateStatus(r.id, 'APPROVED')}>✓ អនុម័ត</button>
-                    )}
-                    {r.status !== 'REJECTED' && (
-                      <button className={`${cardStyles.statusBtn} ${cardStyles.rejectBtn}`} onClick={() => updateStatus(r.id, 'REJECTED')}>✗ បដិសេធ</button>
-                    )}
-                    <button className={`${cardStyles.iconBtn} ${cardStyles.deleteBtn}`} onClick={() => handleDelete(r.id)} title="លុប">🗑️</button>
-                  </div>
-                )}
+                  );
+                })}
               </div>
-            );
-          })}
+            </div>
+          ))}
         </div>
       )}
 
       {modal && (
         <div className={styles.modalOverlay} onClick={() => !submitting && setModal(false)}>
-          <div className={`glass-panel ${styles.modalCard}`} onClick={e => e.stopPropagation()}>
+          <div
+            className={`glass-panel ${styles.modalCard}`}
+            onClick={e => e.stopPropagation()}
+            style={{ maxWidth: step === 1 ? 660 : 520 }}
+          >
+            {/* ── Modal header ── */}
             <div className={styles.modalHeader}>
-              <h3>ស្នើរសូមប្រឡង</h3>
-              <button className={styles.closeBtn} onClick={() => setModal(false)}>✕</button>
-            </div>
-            <form onSubmit={handleSubmit} className={styles.form}>
-              {error && <div className={styles.formError}>{error}</div>}
-              <div className={styles.formGroup}>
-                <label>វគ្គសិក្សា *</label>
-                <select className={styles.input} required
-                  value={form.courseId} onChange={e => selectCourse(e.target.value)}>
-                  <option value="">-- ជ្រើសរើសវគ្គសិក្សា --</option>
-                  {courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-              </div>
-              <div className={styles.formGroup}>
-                <label>សិស្ស *</label>
-                <select className={styles.input} required disabled={!form.courseId}
-                  value={form.studentId} onChange={e => setForm(p => ({ ...p, studentId: e.target.value }))}>
-                  <option value="">{form.courseId ? '-- ជ្រើសរើសសិស្ស --' : '-- សូមជ្រើសរើសវគ្គសិក្សាមុន --'}</option>
-                  {studentsInCourse.map(s => <option key={s.id} value={s.id}>{s.name} ({s.studentCode})</option>)}
-                </select>
-                {form.courseId && studentsInCourse.length === 0 && (
-                  <div style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem', marginTop: 4 }}>មិនមានសិស្សចុះឈ្មោះក្នុងវគ្គនេះទេ</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                {step === 2 && (
+                  <button
+                    type="button"
+                    className={styles.closeBtn}
+                    style={{ fontSize: '0.85rem', marginRight: 4 }}
+                    onClick={() => { setStep(1); setStudentSearch(''); setForm(f => ({ ...f, studentIds: [], examId: '' })); }}
+                  >←</button>
                 )}
-                {selectedStudent && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 8, padding: '8px 10px', background: '#f8fafc', borderRadius: 10, border: '1px solid var(--color-border)' }}>
-                    {selectedStudent.photoUrl ? (
-                      <img src={selectedStudent.photoUrl} alt={selectedStudent.name} className={styles.avatar} />
-                    ) : (
-                      <div className={styles.avatarPlaceholder}>{initials(selectedStudent.name)}</div>
-                    )}
-                    <div>
-                      <div style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--color-text-primary)' }}>{selectedStudent.name}</div>
-                      <div style={{ fontSize: '0.75rem', color: 'var(--color-text-muted)' }}>{selectedStudent.studentCode}</div>
-                    </div>
+                <div>
+                  <h3>ស្នើរសូមប្រឡង</h3>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--color-text-muted)', marginTop: 2 }}>
+                    ជំហាន {step}/2 — {step === 1 ? 'ជ្រើសរើសវគ្គសិក្សា' : 'ជ្រើសរើសសិស្ស និង ប្រឡង'}
                   </div>
-                )}
+                </div>
               </div>
-              <div className={styles.formGroup}>
-                <label>ប្រឡង *</label>
-                <select className={styles.input} required disabled={!form.courseId || examsLoading}
-                  value={form.examId} onChange={e => setForm(p => ({ ...p, examId: e.target.value }))}>
-                  {examsLoading ? (
-                    <option value="">⏳ កំពុងផ្ទុកប្រឡង...</option>
-                  ) : (
-                    <>
-                      <option value="">{form.courseId ? '-- ជ្រើសរើសប្រឡង --' : '-- សូមជ្រើសរើសវគ្គសិក្សាមុន --'}</option>
-                      {examsInCourse.map(e => <option key={e.id} value={e.id}>{e.title}</option>)}
-                    </>
+              <button className={styles.closeBtn} onClick={() => setModal(false)} disabled={submitting}>✕</button>
+            </div>
+
+            {/* ── Step 1: Course picker ── */}
+            {step === 1 && (
+              <div style={{ padding: '16px 22px 24px' }}>
+                <p style={{ fontSize: '0.84rem', color: 'var(--color-text-secondary)', marginBottom: 16 }}>
+                  ជ្រើសរើសវគ្គសិក្សាដែលចង់ស្នើរសូម:
+                </p>
+                <div className={cardStyles.coursePickGrid}>
+                  {courses.map((c, i) => {
+                    const COLORS = ['#6366f1','#10b981','#f59e0b','#3b82f6','#8b5cf6','#ec4899','#14b8a6','#f97316'];
+                    const color = COLORS[i % COLORS.length];
+                    const count = courseStudentCounts[c.id] ?? 0;
+                    const examCount = exams.filter(e => e.courseId === c.id).length;
+                    return (
+                      <button
+                        key={c.id}
+                        type="button"
+                        className={`${cardStyles.coursePickCard} ${form.courseId === c.id ? cardStyles.coursePickCardSelected : ''}`}
+                        style={{ '--pick-color': color } as React.CSSProperties}
+                        onClick={() => { selectCourse(c.id); setStep(2); setStudentSearch(''); }}
+                        disabled={count === 0}
+                      >
+                        <div className={cardStyles.coursePickAvatar} style={{ background: `linear-gradient(135deg,${color},${color}aa)` }}>
+                          {c.name.split(' ').slice(0,2).map(w => w[0]).join('').toUpperCase()}
+                        </div>
+                        <div className={cardStyles.coursePickName}>{c.name}</div>
+                        <div className={cardStyles.coursePickMeta}>
+                          <span>👥 {count} នាក់</span>
+                          <span>📝 {examCount} ប្រឡង</span>
+                        </div>
+                        {count === 0 && <span className={cardStyles.coursePickNoStudents}>គ្មានសិស្ស</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* ── Step 2: Student + exam picker ── */}
+            {step === 2 && (
+              <form onSubmit={handleSubmit} className={styles.form}>
+                {error && <div className={styles.formError}>{error}</div>}
+
+                {/* Selected course badge */}
+                <div className={cardStyles.selectedCourseBadge}>
+                  📚 {courses.find(c => c.id === form.courseId)?.name}
+                </div>
+
+                {/* Student picker */}
+                <div className={styles.formGroup}>
+                  <label>
+                    សិស្ស *
+                    <span style={{ fontSize: '0.78rem', color: 'var(--color-text-muted)', fontWeight: 'normal' }}>
+                      {' '}({form.studentIds.length} នាក់ បានជ្រើស)
+                    </span>
+                  </label>
+
+                  <div className={cardStyles.studentPickerTools}>
+                    <div className={cardStyles.studentPickerSearch}>
+                      <span>⌕</span>
+                      <input
+                        type="text"
+                        placeholder="ស្វែងរកសិស្ស..."
+                        value={studentSearch}
+                        onChange={e => setStudentSearch(e.target.value)}
+                        autoFocus
+                      />
+                    </div>
+                    <button type="button" className={cardStyles.selectAllBtn}
+                      onClick={() => setForm(p => ({ ...p, studentIds: studentsInCourse.map(s => s.id) }))}>
+                      ទាំងអស់
+                    </button>
+                    {form.studentIds.length > 0 && (
+                      <button type="button" className={cardStyles.deselectBtn}
+                        onClick={() => setForm(p => ({ ...p, studentIds: [] }))}>
+                        ដោះជ្រើស
+                      </button>
+                    )}
+                  </div>
+
+                  <div className={cardStyles.studentPickerList}>
+                    {studentsInCourse.length === 0 ? (
+                      <div style={{ textAlign: 'center', padding: '20px', color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>
+                        មិនមានសិស្សចុះឈ្មោះ
+                      </div>
+                    ) : (
+                      studentsInCourse
+                        .filter(s => !studentSearch ||
+                          s.name.toLowerCase().includes(studentSearch.toLowerCase()) ||
+                          s.studentCode.toLowerCase().includes(studentSearch.toLowerCase()))
+                        .map(s => {
+                          const selected = form.studentIds.includes(s.id);
+                          return (
+                            <label key={s.id} className={`${cardStyles.studentPickItem} ${selected ? cardStyles.studentPickItemSelected : ''}`}>
+                              <input
+                                type="checkbox"
+                                checked={selected}
+                                onChange={e => {
+                                  if (e.target.checked) setForm(p => ({ ...p, studentIds: [...p.studentIds, s.id] }));
+                                  else setForm(p => ({ ...p, studentIds: p.studentIds.filter(id => id !== s.id) }));
+                                }}
+                                style={{ margin: 0, width: 15, height: 15, accentColor: 'var(--color-accent)', flexShrink: 0 }}
+                              />
+                              {s.photoUrl ? (
+                                <img src={s.photoUrl} alt="" className={cardStyles.studentPickAvatar} />
+                              ) : (
+                                <div className={`${cardStyles.studentPickAvatar} ${cardStyles.studentPickAvatarFallback}`}>
+                                  {initials(s.name)}
+                                </div>
+                              )}
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div className={cardStyles.studentPickName}>{s.name}</div>
+                                <div className={cardStyles.studentPickCode}>{s.studentCode}</div>
+                              </div>
+                            </label>
+                          );
+                        })
+                    )}
+                  </div>
+                </div>
+
+                {/* Exam select */}
+                <div className={styles.formGroup}>
+                  <label>ប្រឡង *</label>
+                  <select className={styles.input} required disabled={examsLoading}
+                    value={form.examId} onChange={e => setForm(p => ({ ...p, examId: e.target.value }))}>
+                    {examsLoading ? (
+                      <option value="">⏳ កំពុងផ្ទុក...</option>
+                    ) : (
+                      <>
+                        <option value="">-- ជ្រើសរើសប្រឡង --</option>
+                        {examsInCourse.map(e => <option key={e.id} value={e.id}>{e.title}</option>)}
+                      </>
+                    )}
+                  </select>
+                  {!examsLoading && examsInCourse.length === 0 && (
+                    <div style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem', marginTop: 4 }}>
+                      មិនមានប្រឡងសម្រាប់វគ្គនេះ
+                    </div>
                   )}
-                </select>
-                {!examsLoading && form.courseId && examsInCourse.length === 0 && (
-                  <div style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem', marginTop: 4 }}>មិនមានប្រឡងសម្រាប់វគ្គនេះទេ</div>
-                )}
-              </div>
-              <div className={styles.formGroup}>
-                <label>ចំណាំ</label>
-                <textarea className={`${styles.input} ${styles.textarea}`} rows={2}
-                  placeholder="ចំណាំ..."
-                  value={form.note} onChange={e => setForm(p => ({ ...p, note: e.target.value }))} />
-              </div>
-              <div className={styles.formActions}>
-                <button type="button" className={styles.cancelBtn} onClick={() => setModal(false)} disabled={submitting}>បោះបង់</button>
-                <button type="submit" className="btn-primary" disabled={submitting}>
-                  {submitting ? 'កំពុងរក្សាទុក...' : 'ស្នើរសូម'}
-                </button>
-              </div>
-            </form>
+                </div>
+
+                {/* Note */}
+                <div className={styles.formGroup}>
+                  <label>ចំណាំ</label>
+                  <textarea className={`${styles.input} ${styles.textarea}`} rows={2}
+                    placeholder="ចំណាំ..."
+                    value={form.note} onChange={e => setForm(p => ({ ...p, note: e.target.value }))} />
+                </div>
+
+                <div className={styles.formActions}>
+                  <button type="button" className={styles.cancelBtn} onClick={() => setModal(false)} disabled={submitting}>
+                    បោះបង់
+                  </button>
+                  <button type="submit" className="btn-primary"
+                    disabled={submitting || form.studentIds.length === 0 || !form.examId}>
+                    {submitting ? 'កំពុងរក្សាទុក...' : `ស្នើរសូម (${form.studentIds.length} នាក់)`}
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       )}

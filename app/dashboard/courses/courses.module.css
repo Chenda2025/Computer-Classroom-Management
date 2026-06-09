@@ -1243,7 +1243,7 @@
 
 .assignBannerClose:hover { background: rgba(255, 255, 255, 0.26); }
 
-/* Enroll error */
+/* Enroll error / success */
 .enrollError {
   padding: 9px 22px;
   background: var(--color-danger-bg);
@@ -1251,6 +1251,16 @@
   font-size: 0.81rem;
   border-bottom: 1px solid rgba(239, 68, 68, 0.18);
   flex-shrink: 0;
+}
+
+.enrollSuccess {
+  padding: 9px 22px;
+  background: #ecfdf5;
+  color: #047857;
+  font-size: 0.81rem;
+  border-bottom: 1px solid rgba(16, 185, 129, 0.2);
+  flex-shrink: 0;
+  font-weight: 600;
 }
 
 .assignPanels {
@@ -1377,6 +1387,21 @@
   color: var(--color-accent);
 }
 
+.studentAvatarPhoto {
+  background: transparent;
+  border: none;
+  overflow: hidden;
+  padding: 0;
+}
+
+.studentAvatarImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  display: block;
+}
+
 .studentInfo { flex: 1; min-width: 0; }
 
 .studentName {
@@ -1425,6 +1450,21 @@
 }
 
 .removeRowBtn:hover { background: #fee2e2; border-color: rgba(239, 68, 68, 0.45); }
+
+.examReqBtn {
+  border-color: rgba(245, 158, 11, 0.3);
+  background: #fffbeb;
+  color: #b45309;
+}
+
+.examReqBtn:hover { background: #fef3c7; border-color: rgba(245, 158, 11, 0.5); }
+
+.examReqDoneBtn {
+  border-color: rgba(16, 185, 129, 0.3);
+  background: #ecfdf5;
+  color: #047857;
+  cursor: default;
+}
 
 /* ── Exam score (enrolled students) ── */
 .scoreBox {
@@ -1540,4 +1580,75 @@
   padding: 40px;
   color: var(--color-text-muted);
   font-size: 0.83rem;
+}
+
+/* ── Exam request bulk bar ── */
+.examReqBulkBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  background: #fffbeb;
+  border-bottom: 1px solid rgba(245, 158, 11, 0.2);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.examReqSelectAll {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: #92400e;
+  cursor: pointer;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.examReqSelectAll input { cursor: pointer; accent-color: #f59e0b; }
+
+.examReqBulkBtn {
+  height: 24px;
+  padding: 0 10px;
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  border-radius: var(--radius-sm);
+  background: #fef3c7;
+  color: #b45309;
+  font-size: 0.7rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.12s;
+  white-space: nowrap;
+}
+
+.examReqBulkBtn:hover:not(:disabled) { background: #fde68a; }
+.examReqBulkBtn:disabled { opacity: 0.6; cursor: default; }
+
+.examReqAllBtn {
+  height: 24px;
+  padding: 0 10px;
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  border-radius: var(--radius-sm);
+  background: var(--color-accent-light);
+  color: var(--color-accent);
+  font-size: 0.7rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.12s;
+  white-space: nowrap;
+  margin-left: auto;
+}
+
+.examReqAllBtn:hover:not(:disabled) { background: rgba(99, 102, 241, 0.18); }
+.examReqAllBtn:disabled { opacity: 0.6; cursor: default; }
+
+.examReqCheck {
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+  accent-color: #f59e0b;
+  flex-shrink: 0;
 }
