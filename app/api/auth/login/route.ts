@@ -21,7 +21,7 @@ export async function POST(request: Request) {
             role: 'ADMIN'
           }
         });
-        const token = await createToken({ id: newUser.id, role: newUser.role });
+        const token = await createToken({ id: newUser.id, role: newUser.role, name: newUser.name, email: newUser.email });
         const cookieStore = await cookies();
         cookieStore.set('auth_token', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', maxAge: 60 * 60 * 8 });
         return NextResponse.json({ success: true, role: newUser.role });
@@ -38,10 +38,10 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
     }
 
-    const token = await createToken({ id: user.id, role: user.role });
+    const token = await createToken({ id: user.id, role: user.role, name: user.name, email: user.email });
     const cookieStore = await cookies();
     cookieStore.set('auth_token', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', maxAge: 60 * 60 * 24 });
-    
+
     return NextResponse.json({ success: true, role: user.role });
   } catch (error) {
     console.error(error);

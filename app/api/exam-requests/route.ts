@@ -21,23 +21,34 @@ export async function POST(request: Request) {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   if (session.role !== 'ADMIN') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
-  const { studentId, examId, note } = await request.json();
-  if (!studentId || !examId) return NextResponse.json({ error: 'ទិន្នន័យមិនត្រឹមត្រូវ' }, { status: 400 });
+  const { studentIds, examId, note } = await request.json();
+  if (!studentIds || !Array.isArray(studentIds) || studentIds.length === 0 || !examId) {
+    return NextResponse.json({ error: 'ទិន្នន័យមិនត្រឹមត្រូវ' }, { status: 400 });
+  }
 
-  const existing = await prisma.examRequest.findFirst({ where: { studentId, examId } });
-  if (existing) return NextResponse.json({ error: 'សិស្សនេះបានស្នើរសុំរួចហើយ' }, { status: 409 });
+  // Find students who already requested
+  const existingRequests = await prisma.examRequest.findMany({
+    where: { studentId: { in: studentIds }, examId }
+  });
+  const existingIds = new Set(existingRequests.map(r => r.studentId));
+  const newStudentIds = studentIds.filter(id => !existingIds.has(id));
+
+  if (newStudentIds.length === 0) {
+    return NextResponse.json({ error: 'សិស្សទាំងអស់បានស្នើរសុំរួចហើយ' }, { status: 409 });
+  }
 
   try {
-    const req = await prisma.examRequest.create({
-      data: { studentId, examId, note: note?.trim() || null, status: 'PENDING' },
-      include: {
-        student: { select: { id: true, studentCode: true, name: true, photoUrl: true } },
-        exam: { select: { id: true, title: true, course: { select: { name: true } } } },
-      },
-    });
-    return NextResponse.json(req, { status: 201 });
+    const created = await Promise.all(newStudentIds.map(async (studentId) => {
+      return await prisma.examRequest.create({
+        data: { studentId, examId, note: note?.trim() || null, status: 'PENDING' },
+        include: {
+          student: { select: { id: true, studentCode: true, name: true, photoUrl: true } },
+          exam: { select: { id: true, title: true, course: { select: { name: true } } } },
+        },
+      });
+    }));
+    return NextResponse.json(created, { status: 201 });
   } catch (e: any) {
-    if (e?.code === 'P2002') return NextResponse.json({ error: 'សិស្សនេះបានស្នើរសុំរួចហើយ' }, { status: 409 });
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }

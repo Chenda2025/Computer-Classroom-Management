@@ -8,7 +8,15 @@ export async function GET() {
 
   const certs = await prisma.certificate.findMany({
     orderBy: { createdAt: 'desc' },
-    include: { student: { select: { id: true, studentCode: true, name: true } } },
+    include: { 
+      student: { 
+        select: { 
+          id: true, studentCode: true, name: true, photoUrl: true, gender: true, dateOfBirth: true, grade: true,
+          enrollments: { include: { course: true } },
+          examParticipations: { include: { session: { include: { exam: { include: { course: true } } } } }, orderBy: { createdAt: 'desc' } }
+        } 
+      } 
+    },
   });
   return NextResponse.json(certs);
 }
@@ -25,7 +33,15 @@ export async function POST(request: Request) {
 
   const cert = await prisma.certificate.create({
     data: { studentId, title: title.trim(), issuedDate, description: description?.trim() || null },
-    include: { student: { select: { id: true, studentCode: true, name: true } } },
+    include: { 
+      student: { 
+        select: { 
+          id: true, studentCode: true, name: true, photoUrl: true, gender: true, dateOfBirth: true, grade: true,
+          enrollments: { include: { course: true } },
+          examParticipations: { include: { session: { include: { exam: { include: { course: true } } } } }, orderBy: { createdAt: 'desc' } }
+        } 
+      } 
+    },
   });
   return NextResponse.json(cert, { status: 201 });
 }

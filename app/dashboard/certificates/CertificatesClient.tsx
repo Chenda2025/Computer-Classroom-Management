@@ -4,7 +4,9 @@ import styles from '../students/students.module.css';
 import CertificatePrintModal from './CertificatePrintModal';
 import ExportModal from './ExportModal';
 
-interface Student { id: string; studentCode: string; name: string; photoUrl?: string | null; }
+interface ExamParticipation { id: string; currentScore: number; createdAt: string; session: { exam: { course: { name: string } } }; }
+interface Enrollment { id: string; createdAt: string; course: { name: string }; }
+interface Student { id: string; studentCode: string; name: string; photoUrl?: string | null; gender?: string | null; dateOfBirth?: string | null; grade?: string | null; enrollments?: Enrollment[]; examParticipations?: ExamParticipation[]; }
 interface Certificate {
   id: string; title: string; issuedDate: string; description: string | null;
   studentId: string; student: Student; createdAt: string; updatedAt: string;

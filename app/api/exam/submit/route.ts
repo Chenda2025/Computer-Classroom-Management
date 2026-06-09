@@ -26,16 +26,27 @@ export async function POST(request: Request) {
 
     const selectedStrings = selectedOptions.map(String);
     
-    let earnedPoints = 0;
-    // User rule: រើសខុស ឬរើសត្រូវ១ខុស១ = ០
-    const hasIncorrectSelection = selectedStrings.some(val => !correctIndices.includes(val));
+    // Ensure points is a proper number (guard against string coercion)
+    const questionPoints = Number(question.points) || 0;
     
-    if (!hasIncorrectSelection) {
-      const correctCount = selectedStrings.filter(val => correctIndices.includes(val)).length;
-      if (correctCount > 0) {
-        earnedPoints = (question.points / correctIndices.length) * correctCount;
-      }
+    let earnedPoints = 0;
+    const hasIncorrectSelection = selectedStrings.some(val => !correctIndices.includes(val));
+    const allCorrectSelected = correctIndices.every(ci => selectedStrings.includes(ci));
+
+    // Full points only when student picks ALL correct answers and NO wrong answers
+    if (!hasIncorrectSelection && allCorrectSelected && selectedStrings.length > 0) {
+      earnedPoints = questionPoints;
     }
+
+    console.log('[EXAM SCORING]', {
+      questionId,
+      rawPoints: question.points,
+      questionPoints,
+      correctIndices,
+      selectedStrings,
+      hasIncorrectSelection,
+      earnedPoints
+    });
 
     // Save answer
     const answer = await prisma.studentAnswer.upsert({
@@ -64,6 +75,8 @@ export async function POST(request: Request) {
     
     const totalScore = allAnswers.reduce((sum, ans) => sum + ans.earnedPoints, 0);
     
+    console.log('[EXAM SCORING TOTAL]', { participationId, totalScore, answerCount: allAnswers.length });
+
     await prisma.examParticipation.update({
       where: { id: participationId },
       data: { currentScore: totalScore }

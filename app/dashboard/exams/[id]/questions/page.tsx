@@ -6,7 +6,10 @@ export default async function ExamQuestionsPage({ params }: { params: Promise<{ 
   const { id } = await params;
   const exam = await prisma.exam.findUnique({
     where: { id },
-    include: { questions: { orderBy: { order: 'asc' } } }
+    include: { 
+      questions: { orderBy: { order: 'asc' } },
+      course: true
+    }
   });
 
   if (!exam) {

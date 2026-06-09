@@ -11,32 +11,37 @@ export async function GET(_request: Request, { params }: RouteContext) {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const { id: courseId } = await params;
-  const [enrollments, latestExam] = await Promise.all([
-    prisma.enrollment.findMany({
-      where: { courseId },
-      include: { student: true },
-      orderBy: { createdAt: 'asc' },
-    }),
-    prisma.exam.findFirst({ where: { courseId }, orderBy: { createdAt: 'desc' } }),
-  ]);
+  try {
+    const [enrollments, latestExam] = await Promise.all([
+      prisma.enrollment.findMany({
+        where: { courseId },
+        include: { student: true },
+        orderBy: { createdAt: 'asc' },
+      }),
+      prisma.exam.findFirst({ where: { courseId }, orderBy: { createdAt: 'desc' } }),
+    ]);
 
-  const scoreMap = new Map<string, number>();
-  if (latestExam) {
-    const results = await prisma.examResult.findMany({ where: { examId: latestExam.id } });
-    for (const r of results) scoreMap.set(r.studentId, r.score);
+    const scoreMap = new Map<string, number>();
+    if (latestExam) {
+      const results = await prisma.examResult.findMany({ where: { examId: latestExam.id } });
+      for (const r of results) scoreMap.set(r.studentId, r.score);
+    }
+
+    const data = enrollments.map(e => {
+      const score = scoreMap.get(e.studentId) ?? null;
+      return {
+        ...e.student,
+        examId: latestExam?.id ?? null,
+        examTitle: latestExam?.title ?? null,
+        score,
+        passed: score !== null && score >= PASS_SCORE,
+      };
+    });
+    return NextResponse.json(data);
+  } catch (error) {
+    console.error('[enrollments GET]', error);
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
-
-  const data = enrollments.map(e => {
-    const score = scoreMap.get(e.studentId) ?? null;
-    return {
-      ...e.student,
-      examId: latestExam?.id ?? null,
-      examTitle: latestExam?.title ?? null,
-      score,
-      passed: score !== null && score >= PASS_SCORE,
-    };
-  });
-  return NextResponse.json(data);
 }
 
 export async function POST(request: Request, { params }: RouteContext) {
@@ -65,7 +70,7 @@ export async function POST(request: Request, { params }: RouteContext) {
     if (error?.code === 'P2002') {
       return NextResponse.json({ error: 'សិស្សនេះបានចូលវគ្គសិក្សារួចហើយ' }, { status: 409 });
     }
-    console.error(error);
+    console.error('[enrollments POST]', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
@@ -81,7 +86,7 @@ export async function DELETE(request: Request, { params }: RouteContext) {
     await prisma.enrollment.deleteMany({ where: { courseId, studentId } });
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error(error);
+    console.error('[enrollments DELETE]', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }

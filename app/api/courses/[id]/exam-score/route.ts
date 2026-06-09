@@ -24,17 +24,46 @@ export async function POST(request: Request, { params }: RouteContext) {
     const exam = await prisma.exam.findFirst({ where: { courseId }, orderBy: { createdAt: 'desc' } });
     if (!exam) return NextResponse.json({ error: 'វគ្គសិក្សានេះមិនទាន់មានការប្រឡងទេ' }, { status: 400 });
 
+    const passed = num >= PASS_SCORE;
+
+    // Auto-promote passed students to the next course in sequence
+    let promoted = false;
+    let nextCourseName: string | null = null;
+
+    if (passed) {
+      const currentCourse = await prisma.course.findUnique({ where: { id: courseId } });
+      if (currentCourse) {
+        const nextCourse = await prisma.course.findFirst({
+          where: { order: { gt: currentCourse.order } },
+          orderBy: { order: 'asc' },
+        });
+        if (nextCourse) {
+          const alreadyInNext = await prisma.enrollment.findFirst({
+            where: { studentId, courseId: nextCourse.id },
+          });
+          if (!alreadyInNext) {
+            await prisma.enrollment.deleteMany({ where: { studentId, courseId } });
+            await prisma.enrollment.create({ data: { studentId, courseId: nextCourse.id } });
+          }
+          promoted = true;
+          nextCourseName = nextCourse.name;
+        }
+      }
+    }
+
     const result = await prisma.examResult.upsert({
       where: { studentId_examId: { studentId, examId: exam.id } },
-      update: { score: num },
-      create: { studentId, examId: exam.id, score: num },
+      update: { score: num, promoted },
+      create: { studentId, examId: exam.id, score: num, promoted },
     });
 
     return NextResponse.json({
       examId: exam.id,
       examTitle: exam.title,
       score: result.score,
-      passed: result.score >= PASS_SCORE,
+      passed,
+      promoted,
+      nextCourseName,
     });
   } catch (error) {
     console.error(error);

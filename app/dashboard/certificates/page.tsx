@@ -10,9 +10,17 @@ export default async function CertificatesPage() {
   const [certificates, students] = await Promise.all([
     prisma.certificate.findMany({
       orderBy: { createdAt: 'desc' },
-      include: { student: { select: { id: true, studentCode: true, name: true, photoUrl: true } } },
+      include: { 
+        student: { 
+          select: { 
+            id: true, studentCode: true, name: true, photoUrl: true, gender: true, dateOfBirth: true, grade: true,
+            enrollments: { include: { course: true } },
+            examParticipations: { include: { session: { include: { exam: { include: { course: true } } } } }, orderBy: { createdAt: 'desc' } }
+          } 
+        } 
+      },
     }),
-    prisma.student.findMany({ orderBy: { name: 'asc' }, select: { id: true, studentCode: true, name: true, photoUrl: true } }),
+    prisma.student.findMany({ orderBy: { name: 'asc' }, select: { id: true, studentCode: true, name: true, photoUrl: true, gender: true, dateOfBirth: true } }),
   ]);
 
   return (
@@ -21,6 +29,17 @@ export default async function CertificatesPage() {
         ...c,
         createdAt: c.createdAt.toISOString(),
         updatedAt: c.updatedAt.toISOString(),
+        student: {
+          ...c.student,
+          enrollments: c.student.enrollments?.map(e => ({
+            ...e,
+            createdAt: e.createdAt.toISOString(),
+          })),
+          examParticipations: c.student.examParticipations?.map(p => ({
+            ...p,
+            createdAt: p.createdAt.toISOString(),
+          })),
+        },
       }))}
       students={students}
       userRole={session.role as string}

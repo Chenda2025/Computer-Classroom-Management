@@ -92,6 +92,71 @@ export default function AdminLiveExamClient({ initialSession }: { initialSession
   const [projectorSlide, setProjectorSlide] = useState(0);
   const [projectorTimeLeft, setProjectorTimeLeft] = useState(-1);
   const [isPaused, setIsPaused] = useState(false);
+  const [projectorTextSize, setProjectorTextSize] = useState(1.8);
+  const [isReviewMode, setIsReviewMode] = useState(false);
+  const [reviewAutoAdvanceSeconds, setReviewAutoAdvanceSeconds] = useState(5);
+
+  const [preApproveModal, setPreApproveModal] = useState(false);
+  const [eligibleStudents, setEligibleStudents] = useState<any[]>([]);
+  const [selectedEligibleIds, setSelectedEligibleIds] = useState<Set<string>>(new Set());
+  const [loadingEligible, setLoadingEligible] = useState(false);
+  const [preApproveSearch, setPreApproveSearch] = useState('');
+
+  const openPreApprove = async () => {
+    setPreApproveModal(true);
+    setPreApproveSearch('');
+    setLoadingEligible(true);
+    try {
+      const res = await fetch(`/api/live-exams/${session.id}/eligible-students`);
+      if (res.ok) {
+        const data = await res.json();
+        setEligibleStudents(data);
+        setSelectedEligibleIds(new Set());
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingEligible(false);
+    }
+  };
+
+  const filteredEligible = preApproveSearch.trim()
+    ? eligibleStudents.filter(s =>
+        s.name.toLowerCase().includes(preApproveSearch.toLowerCase()) ||
+        s.studentCode.toLowerCase().includes(preApproveSearch.toLowerCase())
+      )
+    : eligibleStudents;
+
+  const handleBulkApprove = async () => {
+    if (selectedEligibleIds.size === 0) return;
+    try {
+      setLoadingEligible(true);
+      const res = await fetch(`/api/live-exams/${session.id}/bulk-approve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ studentIds: Array.from(selectedEligibleIds) })
+      });
+      if (res.ok) {
+        const newParticipations = await res.json();
+        
+        // Ensure we don't add duplicates
+        const newIds = new Set(newParticipations.map((p: any) => p.id));
+        
+        setSession(prev => ({
+          ...prev,
+          participations: [
+            ...prev.participations.filter(p => !newIds.has(p.id)), 
+            ...newParticipations
+          ]
+        }));
+        setPreApproveModal(false);
+      }
+    } catch (err) {
+      alert('មានបញ្ហាកើតឡើង');
+    } finally {
+      setLoadingEligible(false);
+    }
+  };
 
   // Auto-advance slide based on time limit
   useEffect(() => {
@@ -103,25 +168,28 @@ export default function AdminLiveExamClient({ initialSession }: { initialSession
 
   useEffect(() => {
     if (session.status !== 'IN_PROGRESS') return;
-    if (projectorTimeLeft === -1) return; // Wait for initialization
+    if (projectorTimeLeft === -1 && !isReviewMode) return; // Wait for initialization
     if (isPaused) return; // Wait if paused
     
     if (projectorTimeLeft <= 0) {
       if (session.exam?.questions && projectorSlide < session.exam.questions.length - 1) {
         setProjectorSlide(p => p + 1);
-        setProjectorTimeLeft(-1); // Prevent double advance
+        setProjectorTimeLeft(isReviewMode ? reviewAutoAdvanceSeconds : -1); // Auto-reset for review mode
         playNextSound();
+      } else if (isReviewMode && projectorSlide === session.exam.questions.length - 1) {
+        setIsReviewMode(false);
+        setProjectorTimeLeft(0);
       }
       return;
     }
 
-    if (projectorTimeLeft > 0 && projectorTimeLeft <= 5) {
+    if (projectorTimeLeft > 0 && projectorTimeLeft <= 5 && !isReviewMode) {
       playTickSound();
     }
 
     const timer = setInterval(() => setProjectorTimeLeft(t => t > 0 ? t - 1 : 0), 1000);
     return () => clearInterval(timer);
-  }, [projectorTimeLeft, session.status, projectorSlide, session.exam?.questions?.length, isPaused]);
+  }, [projectorTimeLeft, session.status, projectorSlide, session.exam?.questions?.length, isPaused, isReviewMode, reviewAutoAdvanceSeconds]);
 
   // Poll for updates every 3 seconds
   useEffect(() => {
@@ -274,9 +342,12 @@ export default function AdminLiveExamClient({ initialSession }: { initialSession
 
           {/* Waiting room */}
           <div className={styles.panelCard}>
-            <div className={styles.cardHead}>
-              <h3>បញ្ជីរង់ចាំចូលរួម</h3>
-              {pending.length > 0 && <span className={styles.pendingCount}>{pending.length} សំណើថ្មី</span>}
+            <div className={styles.cardHead} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <h3 style={{ margin: 0 }}>បញ្ជីរង់ចាំចូលរួម</h3>
+                {pending.length > 0 && <span className={styles.pendingCount}>{pending.length} សំណើថ្មី</span>}
+              </div>
+              <button className="btn-primary" onClick={openPreApprove} style={{ padding: '6px 12px', fontSize: '0.9rem', whiteSpace: 'nowrap' }}>+ អនុញ្ញាតសិស្សមុន</button>
             </div>
 
             {pending.length === 0 && approved.length === 0 ? (
@@ -330,39 +401,98 @@ export default function AdminLiveExamClient({ initialSession }: { initialSession
       {session.status === 'IN_PROGRESS' && (
         <>
         {session.exam?.questions && session.exam.questions.length > 0 && (
-          <div id="projector-container" style={{ background: 'white', borderRadius: 16, padding: '2.5rem', marginBottom: '2rem', boxShadow: '0 10px 25px rgba(0,0,0,0.05)', textAlign: 'center', overflowY: 'auto' }}>
-            <div style={{ marginTop: '2rem', fontSize: '2.2rem', fontWeight: 'bold', color: '#050480', marginBottom: '4rem', lineHeight: 1.6 }}>
-              <span style={{ color: '#ef4444', marginRight: '12px' }}>សំណួរទី {projectorSlide + 1}៖</span>
-              {session.exam.questions[projectorSlide]?.text}
-            </div>
+          <div id="projector-container" style={{ background: 'white', borderRadius: 16, padding: '2.5rem', marginBottom: '2rem', boxShadow: '0 10px 25px rgba(0,0,0,0.05)', textAlign: 'center', overflowY: 'auto', position: 'relative' }}>
+            {projectorSlide === session.exam.questions.length - 1 && projectorTimeLeft === 0 && !isReviewMode ? (
+              <div style={{ padding: '6rem 2rem', textAlign: 'center', animation: 'fade-in 0.5s ease-out' }}>
+                <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>🎉</div>
+                <h3 style={{ fontSize: '2.5rem', color: '#1e293b', marginBottom: '1.5rem' }}>ការប្រឡងបានបញ្ចប់!</h3>
+                <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', marginBottom: '2rem', alignItems: 'center' }}>
+                  <label style={{ fontSize: '1.2rem', color: '#64748b' }}>ប្ដូរសំណួរបន្ទាប់រៀងរាល់៖</label>
+                  <input type="number" min="1" value={reviewAutoAdvanceSeconds} onChange={e => setReviewAutoAdvanceSeconds(Number(e.target.value))} style={{ width: 80, padding: '8px', fontSize: '1.2rem', borderRadius: 8, border: '1px solid #cbd5e1', textAlign: 'center' }} />
+                  <span style={{ fontSize: '1.2rem', color: '#64748b' }}>វិនាទី</span>
+                </div>
+                <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+                  <button onClick={() => { setIsReviewMode(true); setProjectorSlide(0); setProjectorTimeLeft(reviewAutoAdvanceSeconds); }} disabled={loading} style={{ background: '#8b5cf6', color: 'white', border: 'none', padding: '16px 32px', borderRadius: 30, fontSize: '1.5rem', fontWeight: 'bold', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 12, boxShadow: '0 4px 10px rgba(139, 92, 246, 0.3)' }}>
+                    មើលចម្លើយ (Review)
+                  </button>
+                  <button onClick={handleEndExam} disabled={loading} style={{ background: '#3b82f6', color: 'white', border: 'none', padding: '16px 32px', borderRadius: 30, fontSize: '1.5rem', fontWeight: 'bold', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 12, boxShadow: '0 4px 10px rgba(59, 130, 246, 0.3)' }}>
+                    {loading ? 'កំពុងដំណើរការ...' : 'បញ្ចប់ នឹងមើលលទ្ធផល'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                {session.exam.questions[projectorSlide]?.type === 'TYPING' && (
+                  <div style={{ position: 'absolute', top: '2rem', right: '2rem', display: 'flex', gap: '0.5rem', background: '#f1f5f9', padding: '0.5rem', borderRadius: 30 }}>
+                    <button onClick={() => setProjectorTextSize(s => Math.max(1, s - 0.2))} style={{ width: 36, height: 36, borderRadius: '50%', border: 'none', background: 'white', cursor: 'pointer', fontWeight: 'bold', fontSize: '1.2rem', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>A-</button>
+                    <button onClick={() => setProjectorTextSize(s => Math.min(4, s + 0.2))} style={{ width: 36, height: 36, borderRadius: '50%', border: 'none', background: 'white', cursor: 'pointer', fontWeight: 'bold', fontSize: '1.2rem', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }}>A+</button>
+                  </div>
+                )}
+                <div style={{ marginTop: '2rem', fontSize: '2.2rem', fontWeight: 'bold', color: '#050480', marginBottom: '4rem', lineHeight: 1.6, paddingRight: '100px' }}>
+                  <span style={{ color: '#ef4444', marginRight: '12px' }}>សំណួរទី {projectorSlide + 1}៖</span>
+                  {session.exam.questions[projectorSlide]?.text}
+                </div>
 
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: '4rem' }}>
-              <div className="animate-float" style={{ fontSize: '3.5rem', marginRight: '2rem', filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.1))' }}>
-                👩‍🎓
-              </div>
-              <span style={{ fontWeight: 'bold', fontSize: '2.4rem', padding: '16px 120px', borderRadius: 50, background: projectorTimeLeft <= 10 && projectorTimeLeft >= 0 ? '#fef2f2' : '#eff6ff', color: projectorTimeLeft <= 10 && projectorTimeLeft >= 0 ? '#ef4444' : '#3b82f6', display: 'flex', alignItems: 'center', gap: 12, transition: 'all 0.3s', zIndex: 10, boxShadow: '0 4px 10px rgba(0,0,0,0.05)' }}>
-                ⏱ {Math.max(0, Math.floor(projectorTimeLeft / 60))}:{Math.max(0, projectorTimeLeft % 60).toString().padStart(2, '0')}
-              </span>
-              <div className="animate-float-delayed" style={{ fontSize: '3.5rem', marginLeft: '2rem', filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.1))' }}>
-                👨‍🎓
-              </div>
-            </div>
-            
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', textAlign: 'left', marginBottom: '3rem' }}>
-              {(() => {
-                try {
-                  const opts = JSON.parse(session.exam.questions[projectorSlide].options);
-                  return opts.map((opt: string, i: number) => (
-                    <div key={i} style={{ padding: '1.5rem', background: '#f8fafc', borderRadius: 12, border: '2px solid #e2e8f0', fontSize: '1.4rem', display: 'flex', alignItems: 'center', color: 'black' }}>
-                      <span style={{ minWidth: 44, height: 44, background: '#3b82f6', color: 'white', borderRadius: '50%', textAlign: 'center', lineHeight: '44px', marginRight: 16, fontWeight: 'bold', boxShadow: '0 2px 4px rgba(59, 130, 246, 0.3)' }}>
-                        {['ក', 'ខ', 'គ', 'ឃ', 'ង', 'ច', 'ឆ', 'ជ', 'ឈ', 'ញ'][i] || String.fromCharCode(65 + i)}
-                      </span>
-                      {opt}
-                    </div>
-                  ));
-                } catch { return null; }
-              })()}
-            </div>
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', marginBottom: '4rem' }}>
+                  <div className="animate-float" style={{ fontSize: '3.5rem', marginRight: '2rem', filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.1))' }}>
+                    👩‍🎓
+                  </div>
+                  {isReviewMode ? (
+                    <span style={{ fontWeight: 'bold', fontSize: '2.4rem', padding: '16px 120px', borderRadius: 50, background: '#dcfce7', color: '#16a34a', display: 'flex', alignItems: 'center', gap: 12, zIndex: 10, boxShadow: '0 4px 10px rgba(0,0,0,0.05)' }}>
+                      🔍 ត្រូវប្ដូរក្នុង {projectorTimeLeft}s
+                    </span>
+                  ) : (
+                    <span style={{ fontWeight: 'bold', fontSize: '2.4rem', padding: '16px 120px', borderRadius: 50, background: projectorTimeLeft <= 10 && projectorTimeLeft >= 0 ? '#fef2f2' : '#eff6ff', color: projectorTimeLeft <= 10 && projectorTimeLeft >= 0 ? '#ef4444' : '#3b82f6', display: 'flex', alignItems: 'center', gap: 12, transition: 'all 0.3s', zIndex: 10, boxShadow: '0 4px 10px rgba(0,0,0,0.05)' }}>
+                      ⏱ {Math.max(0, Math.floor(projectorTimeLeft / 60))}:{Math.max(0, projectorTimeLeft % 60).toString().padStart(2, '0')}
+                    </span>
+                  )}
+                  <div className="animate-float-delayed" style={{ fontSize: '3.5rem', marginLeft: '2rem', filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.1))' }}>
+                    👨‍🎓
+                  </div>
+                </div>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', textAlign: 'left', marginBottom: '3rem' }}>
+                  {(() => {
+                    const currentQuestion = session.exam.questions[projectorSlide];
+                    if (currentQuestion.type === 'TYPING') {
+                      return (
+                        <div style={{ gridColumn: '1 / -1', background: '#f8fafc', padding: '2rem', borderRadius: 16, border: '2px dashed #cbd5e1', fontFamily: 'monospace', fontSize: `${projectorTextSize}rem`, lineHeight: 1.8, color: '#1e293b', whiteSpace: 'pre-wrap', textAlign: 'left', transition: 'font-size 0.2s' }}>
+                          {currentQuestion.correctAnswer || '(មិនមានអត្ថបទ)'}
+                        </div>
+                      );
+                    }
+                    try {
+                      const opts = JSON.parse(currentQuestion.options);
+                      let correctAnswers: string[] = [];
+                      if (isReviewMode) {
+                        try { correctAnswers = JSON.parse(currentQuestion.correctAnswer) } catch { }
+                      }
+
+                      return opts.map((opt: string, i: number) => {
+                        const isCorrect = isReviewMode && correctAnswers.includes(opt);
+                        const isWrong = isReviewMode && !isCorrect;
+                        
+                        const bg = isCorrect ? '#dcfce7' : (isWrong ? '#fef2f2' : '#f8fafc');
+                        const border = isCorrect ? '2px solid #22c55e' : (isWrong ? '2px solid #ef4444' : '2px solid #e2e8f0');
+                        const color = isCorrect ? '#166534' : (isWrong ? '#991b1b' : 'black');
+                        const badgeBg = isCorrect ? '#22c55e' : (isWrong ? '#ef4444' : '#3b82f6');
+                        
+                        return (
+                          <div key={i} style={{ padding: '1.5rem', background: bg, borderRadius: 12, border: border, fontSize: '1.4rem', display: 'flex', alignItems: 'center', color: color, position: 'relative' }}>
+                            <span style={{ minWidth: 44, height: 44, background: badgeBg, color: 'white', borderRadius: '50%', textAlign: 'center', lineHeight: '44px', marginRight: 16, fontWeight: 'bold', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>
+                              {['ក', 'ខ', 'គ', 'ឃ', 'ង', 'ច', 'ឆ', 'ជ', 'ឈ', 'ញ'][i] || String.fromCharCode(65 + i)}
+                            </span>
+                            {opt}
+                            {isCorrect && <span style={{ position: 'absolute', right: '1.5rem', fontSize: '2rem' }}>✅</span>}
+                            {isWrong && <span style={{ position: 'absolute', right: '1.5rem', fontSize: '2rem' }}>❌</span>}
+                          </div>
+                        );
+                      });
+                    } catch { return null; }
+                  })()}
+                </div>
+              </>
+            )}
 
             <div style={{ borderTop: '2px solid #f1f5f9', paddingTop: '2.5rem' }}>
               <h4 style={{ color: '#64748b', marginBottom: '1.5rem', textTransform: 'uppercase', letterSpacing: 1 }}>សិស្សកំពុងប្រឡង ({approved.length})</h4>
@@ -378,12 +508,21 @@ export default function AdminLiveExamClient({ initialSession }: { initialSession
             
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '2rem', marginTop: '3rem', paddingTop: '2rem', borderTop: '2px dashed #f1f5f9' }}>
               <button 
-                onClick={() => { setProjectorSlide(p => Math.max(0, p - 1)); setProjectorTimeLeft(-1); playNextSound(); }} 
-                disabled={projectorSlide === 0} 
-                style={{ width: 64, height: 64, borderRadius: '50%', border: 'none', background: projectorSlide === 0 ? '#f8fafc' : '#f1f5f9', color: projectorSlide === 0 ? '#cbd5e1' : '#64748b', cursor: projectorSlide === 0 ? 'not-allowed' : 'pointer', fontSize: '1.8rem', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s', boxShadow: projectorSlide === 0 ? 'none' : '0 4px 6px rgba(0,0,0,0.05)' }}
-                title="សំណួរមុន"
+                onClick={() => {
+                  if (isReviewMode && projectorSlide === 0) {
+                    setIsReviewMode(false);
+                    setProjectorTimeLeft(0);
+                    return;
+                  }
+                  setProjectorSlide(p => Math.max(0, p - 1)); 
+                  setProjectorTimeLeft(isReviewMode ? reviewAutoAdvanceSeconds : -1); 
+                  playNextSound(); 
+                }} 
+                disabled={!isReviewMode && projectorSlide === 0} 
+                style={{ width: 64, height: 64, borderRadius: '50%', border: 'none', background: (!isReviewMode && projectorSlide === 0) ? '#f8fafc' : '#f1f5f9', color: (!isReviewMode && projectorSlide === 0) ? '#cbd5e1' : '#64748b', cursor: (!isReviewMode && projectorSlide === 0) ? 'not-allowed' : 'pointer', fontSize: '1.8rem', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s', boxShadow: (!isReviewMode && projectorSlide === 0) ? 'none' : '0 4px 6px rgba(0,0,0,0.05)' }}
+                title={isReviewMode && projectorSlide === 0 ? 'បោះបង់ការមើលចម្លើយ' : 'សំណួរមុន'}
               >
-                ⏮
+                {isReviewMode && projectorSlide === 0 ? '✕' : '⏮'}
               </button>
               
               <button 
@@ -410,12 +549,21 @@ export default function AdminLiveExamClient({ initialSession }: { initialSession
               </button>
 
               <button 
-                onClick={() => { setProjectorSlide(p => Math.min(session.exam.questions.length - 1, p + 1)); setProjectorTimeLeft(-1); playNextSound(); }} 
-                disabled={projectorSlide === session.exam.questions.length - 1} 
-                style={{ width: 64, height: 64, borderRadius: '50%', border: 'none', background: projectorSlide === session.exam.questions.length - 1 ? '#f8fafc' : '#f1f5f9', color: projectorSlide === session.exam.questions.length - 1 ? '#cbd5e1' : '#64748b', cursor: projectorSlide === session.exam.questions.length - 1 ? 'not-allowed' : 'pointer', fontSize: '1.8rem', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s', boxShadow: projectorSlide === session.exam.questions.length - 1 ? 'none' : '0 4px 6px rgba(0,0,0,0.05)' }}
-                title="សំណួរបន្ទាប់"
+                onClick={() => {
+                  if (isReviewMode && projectorSlide === session.exam.questions.length - 1) {
+                    setIsReviewMode(false);
+                    setProjectorTimeLeft(0);
+                    return;
+                  }
+                  setProjectorSlide(p => Math.min(session.exam.questions.length - 1, p + 1)); 
+                  setProjectorTimeLeft(isReviewMode ? reviewAutoAdvanceSeconds : -1); 
+                  playNextSound(); 
+                }} 
+                disabled={!isReviewMode && projectorSlide === session.exam.questions.length - 1} 
+                style={{ width: 64, height: 64, borderRadius: '50%', border: 'none', background: (!isReviewMode && projectorSlide === session.exam.questions.length - 1) ? '#f8fafc' : '#f1f5f9', color: (!isReviewMode && projectorSlide === session.exam.questions.length - 1) ? '#cbd5e1' : '#64748b', cursor: (!isReviewMode && projectorSlide === session.exam.questions.length - 1) ? 'not-allowed' : 'pointer', fontSize: '1.8rem', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s', boxShadow: (!isReviewMode && projectorSlide === session.exam.questions.length - 1) ? 'none' : '0 4px 6px rgba(0,0,0,0.05)' }}
+                title={isReviewMode && projectorSlide === session.exam.questions.length - 1 ? 'បញ្ចប់ការមើលចម្លើយ' : 'សំណួរបន្ទាប់'}
               >
-                ⏭
+                {isReviewMode && projectorSlide === session.exam.questions.length - 1 ? '✓' : '⏭'}
               </button>
             </div>
           </div>
@@ -484,6 +632,146 @@ export default function AdminLiveExamClient({ initialSession }: { initialSession
           <button className="btn-primary" onClick={() => window.location.href = `/dashboard/live-exams/${session.id}/results`}>
             មើលលទ្ធផលប្រឡង →
           </button>
+        </div>
+      )}
+
+      {preApproveModal && (
+        <div className={styles.modalOverlay} onClick={() => !loadingEligible && setPreApproveModal(false)}>
+          <div className={styles.preApproveModal} onClick={e => e.stopPropagation()}>
+
+            {/* ── Header ── */}
+            <div className={styles.preApproveHeader}>
+              <div className={styles.preApproveHeaderLeft}>
+                <div className={styles.preApproveHeaderIcon}>👥</div>
+                <div>
+                  <h3 className={styles.preApproveTitle}>អនុញ្ញាតសិស្សមុន</h3>
+                  <p className={styles.preApproveSubtitle}>Pre-approve students before the exam starts</p>
+                </div>
+              </div>
+              <button className={styles.preApproveClose} type="button" onClick={() => setPreApproveModal(false)}>✕</button>
+            </div>
+
+            {/* ── Body ── */}
+            <div className={styles.preApproveBody}>
+              {loadingEligible ? (
+                <div className={styles.preApproveLoading}>
+                  <div className={styles.loadingSpinner} />
+                  <p>កំពុងទាញយកទិន្នន័យសិស្ស...</p>
+                </div>
+              ) : eligibleStudents.length === 0 ? (
+                <div className={styles.preApproveEmpty}>
+                  <div className={styles.preApproveEmptyIcon}>✅</div>
+                  <p>សិស្សទាំងអស់បានអនុញ្ញាតហើយ</p>
+                  <span>ឬមិនមានសិស្សចុះឈ្មោះក្នុងវគ្គនេះទេ</span>
+                </div>
+              ) : (
+                <>
+                  {/* Toolbar */}
+                  <div className={styles.preApproveToolbar}>
+                    <div className={styles.preApproveSearchWrap}>
+                      <span className={styles.preApproveSearchIcon}>⌕</span>
+                      <input
+                        type="text"
+                        autoFocus
+                        className={styles.preApproveSearchInput}
+                        placeholder="ស្វែងរកសិស្ស..."
+                        value={preApproveSearch}
+                        onChange={e => setPreApproveSearch(e.target.value)}
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      className={styles.selectAllBtn}
+                      onClick={() => {
+                        if (selectedEligibleIds.size === eligibleStudents.length) {
+                          setSelectedEligibleIds(new Set());
+                        } else {
+                          setSelectedEligibleIds(new Set(eligibleStudents.map(s => s.id)));
+                        }
+                      }}
+                    >
+                      {selectedEligibleIds.size === eligibleStudents.length ? 'ដោះជ្រើស' : 'ជ្រើសទាំងអស់'}
+                    </button>
+                  </div>
+
+                  {/* Stats */}
+                  <div className={styles.preApproveStats}>
+                    <span className={styles.preApproveStat}>
+                      <strong>{eligibleStudents.length}</strong> សិស្សសរុប
+                    </span>
+                    <span className={styles.preApproveStatDivider} />
+                    <span className={styles.preApproveStat}>
+                      <strong className={styles.selectedCountText}>{selectedEligibleIds.size}</strong> បានជ្រើស
+                    </span>
+                  </div>
+
+                  {/* Student list */}
+                  <div className={styles.preApproveList}>
+                    {filteredEligible.length === 0 ? (
+                      <div className={styles.preApproveSearchEmpty}>រកមិនឃើញ</div>
+                    ) : filteredEligible.map((s, i) => {
+                      const selected = selectedEligibleIds.has(s.id);
+                      return (
+                        <label
+                          key={s.id}
+                          className={`${styles.preApproveItem} ${selected ? styles.preApproveItemSelected : ''}`}
+                          style={{ animationDelay: `${i * 28}ms` }}
+                        >
+                          <div className={styles.preApproveItemLeft}>
+                            <Avatar photoUrl={s.photoUrl} name={s.name} small />
+                            <div>
+                              <div className={styles.preApproveStudentName}>{s.name}</div>
+                              <div className={styles.preApproveStudentCode}>{s.studentCode}</div>
+                            </div>
+                          </div>
+                          <div className={`${styles.preApproveCheck} ${selected ? styles.preApproveCheckActive : ''}`}>
+                            {selected && <span>✓</span>}
+                          </div>
+                          <input
+                            type="checkbox"
+                            className={styles.preApproveHiddenCheck}
+                            checked={selected}
+                            onChange={e => {
+                              const next = new Set(selectedEligibleIds);
+                              if (e.target.checked) next.add(s.id);
+                              else next.delete(s.id);
+                              setSelectedEligibleIds(next);
+                            }}
+                          />
+                        </label>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+            </div>
+
+            {/* ── Footer ── */}
+            {!loadingEligible && eligibleStudents.length > 0 && (
+              <div className={styles.preApproveFooter}>
+                <div className={styles.preApproveFooterInfo}>
+                  {selectedEligibleIds.size > 0 ? (
+                    <span className={styles.preApproveSelBadge}>✓ {selectedEligibleIds.size} នាក់បានជ្រើស</span>
+                  ) : (
+                    <span className={styles.preApproveFooterHint}>សូមជ្រើសសិស្សមុន</span>
+                  )}
+                </div>
+                <div className={styles.preApproveFooterActions}>
+                  <button type="button" className={styles.preApproveCancelBtn} onClick={() => setPreApproveModal(false)}>
+                    បោះបង់
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.preApproveConfirmBtn}
+                    onClick={handleBulkApprove}
+                    disabled={selectedEligibleIds.size === 0 || loadingEligible}
+                  >
+                    {loadingEligible ? 'កំពុងដំណើរការ...' : `▶ អនុញ្ញាត${selectedEligibleIds.size > 0 ? ` (${selectedEligibleIds.size})` : ''}`}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

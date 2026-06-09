@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import styles from '../../../students/students.module.css';
 
 interface Props {
@@ -9,6 +10,7 @@ interface Props {
 }
 
 export default function AdminExamResultsClient({ session, promotedMap, nextCourse }: Props) {
+  const [selectedParticipationId, setSelectedParticipationId] = useState<string | null>(null);
   const getGrade = (pts: number) => {
     if (pts < 60) return { label: 'ធ្លាក់', color: '#ef4444' };
     if (pts < 70) return { label: 'មធ្យម', color: '#f59e0b' };
@@ -77,7 +79,7 @@ export default function AdminExamResultsClient({ session, promotedMap, nextCours
               const promoted = !!promotedMap[p.studentId];
 
               return (
-                <tr key={p.id} className={styles.row}>
+                <tr key={p.id} className={styles.row} onClick={() => setSelectedParticipationId(p.id)} style={{ cursor: 'pointer' }} title="ចុចដើម្បីមើលចម្លើយលម្អិត">
                   <td className={styles.indexCell}>
                     {index === 0 ? '🥇 1' : index === 1 ? '🥈 2' : index === 2 ? '🥉 3' : index + 1}
                   </td>
@@ -124,6 +126,68 @@ export default function AdminExamResultsClient({ session, promotedMap, nextCours
           </tbody>
         </table>
       </div>
+
+      {selectedParticipationId && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }} onClick={() => setSelectedParticipationId(null)}>
+          <div className="glass-panel" onClick={e => e.stopPropagation()} style={{ background: 'white', borderRadius: 16, width: '100%', maxWidth: 800, maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <div style={{ padding: '20px 24px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <div style={{ width: 40, height: 40, borderRadius: '50%', background: '#e2e8f0', overflow: 'hidden' }}>
+                  {sorted.find(p => p.id === selectedParticipationId)?.student.photoUrl && <img src={sorted.find(p => p.id === selectedParticipationId)?.student.photoUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />}
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, color: '#1e293b' }}>{sorted.find(p => p.id === selectedParticipationId)?.student.name}</h3>
+                  <div style={{ fontSize: '0.85rem', color: '#64748b' }}>ពិន្ទុសរុប៖ {sorted.find(p => p.id === selectedParticipationId)?.currentScore}</div>
+                </div>
+              </div>
+              <button onClick={() => setSelectedParticipationId(null)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#64748b' }}>✕</button>
+            </div>
+            
+            <div style={{ padding: '24px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {session.exam.questions.map((q: any, i: number) => {
+                const p = sorted.find(p => p.id === selectedParticipationId);
+                const answer = p?.answers.find((a: any) => a.questionId === q.id);
+                const isCorrect = answer && answer.earnedPoints > 0;
+                
+                return (
+                  <div key={q.id} style={{ padding: '16px', border: '1px solid #e2e8f0', borderRadius: 12, background: isCorrect ? '#f0fdf4' : (answer ? '#fef2f2' : '#f8fafc') }}>
+                    <div style={{ fontWeight: 600, color: '#1e293b', marginBottom: 8 }}>{i + 1}. {q.text}</div>
+                    
+                    {q.type === 'TYPING' ? (
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 12 }}>
+                        <div>
+                          <div style={{ fontSize: '0.8rem', color: '#64748b', marginBottom: 4 }}>ចម្លើយត្រឹមត្រូវ៖</div>
+                          <div style={{ padding: 12, background: 'white', borderRadius: 8, border: '1px solid #e2e8f0', fontFamily: 'monospace', whiteSpace: 'pre-wrap' }}>{q.correctAnswer}</div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '0.8rem', color: '#64748b', marginBottom: 4 }}>ចម្លើយរបស់សិស្ស៖</div>
+                          <div style={{ padding: 12, background: 'white', borderRadius: 8, border: '1px solid #e2e8f0', fontFamily: 'monospace', whiteSpace: 'pre-wrap', color: isCorrect ? '#16a34a' : '#ef4444' }}>
+                            {answer ? answer.selectedOptions : '(មិនបានឆ្លើយ)'}
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ marginTop: 12 }}>
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: '0.85rem', color: '#64748b' }}>ចម្លើយសិស្សរើស៖</span>
+                          <strong style={{ color: isCorrect ? '#16a34a' : '#ef4444' }}>{answer ? JSON.parse(answer.selectedOptions).join(', ') : '(មិនបានឆ្លើយ)'}</strong>
+                        </div>
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 4 }}>
+                          <span style={{ fontSize: '0.85rem', color: '#64748b' }}>ចម្លើយត្រូវ៖</span>
+                          <strong style={{ color: '#16a34a' }}>{JSON.parse(q.correctAnswer).join(', ')}</strong>
+                        </div>
+                      </div>
+                    )}
+                    <div style={{ marginTop: 12, fontSize: '0.85rem', fontWeight: 600, color: isCorrect ? '#16a34a' : '#64748b' }}>
+                      ទទួលបាន៖ {answer ? answer.earnedPoints : 0} / {q.points} ពិន្ទុ
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

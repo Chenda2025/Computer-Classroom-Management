@@ -7,14 +7,20 @@ export default function QuestionsClient({ exam }: { exam: any }) {
   const [questions, setQuestions] = useState<any[]>(exam.questions || []);
   const [modal, setModal] = useState(false);
   
+  const isTypingCourse = exam.course?.name?.toLowerCase().includes('typing');
+
   const EMPTY = {
     id: '',
     text: '',
-    type: 'SINGLE',
+    type: isTypingCourse ? 'TYPING' : 'SINGLE',
     options: ['ជម្រើសទី១', 'ជម្រើសទី២'],
     correctAnswer: [] as string[],
     timeLimitSeconds: 60,
-    points: 10
+    points: 10,
+    typingLang: 'BOTH',
+    typingMode: 'AUTO',
+    typingLength: 50,
+    typingCustomText: ''
   };
 
   const [form, setForm] = useState(EMPTY);
@@ -24,6 +30,35 @@ export default function QuestionsClient({ exam }: { exam: any }) {
   const [importModal, setImportModal] = useState(false);
   const [importText, setImportText] = useState('');
   const [reordering, setReordering] = useState(false);
+
+  const [timeUnit, setTimeUnit] = useState('SECONDS');
+  const [timeValue, setTimeValue] = useState(60);
+
+  const handleTimeChange = (v: number, u: string) => {
+    let s = v;
+    if (u === 'MINUTES') s = v * 60;
+    if (u === 'HOURS') s = v * 3600;
+    setForm(prev => ({ ...prev, timeLimitSeconds: s }));
+    setTimeValue(v);
+    setTimeUnit(u);
+  };
+
+  const handleGenerateText = () => {
+    const khmerWords = ['សាលារៀន', 'កម្ពុជា', 'សិស្ស', 'គ្រូបង្រៀន', 'ចំណេះដឹង', 'សៀវភៅ', 'ប៊ិច', 'តុ', 'ក្ដារខៀន', 'មិត្តភក្តិ', 'ការសិក្សា', 'កុំព្យូទ័រ', 'វាយអត្ថបទ', 'អនាគត', 'ពន្លឺ', 'ជោគជ័យ', 'ខិតខំ', 'ប្រឹងប្រែង', 'ប្រទេស', 'ជាតិ', 'បច្ចេកវិទ្យា', 'សុភមង្គល', 'សន្តិភាព', 'អភិវឌ្ឍន៍', 'ស្រឡាញ់'];
+    const englishWords = ['school', 'cambodia', 'student', 'teacher', 'knowledge', 'book', 'pen', 'table', 'whiteboard', 'friend', 'study', 'computer', 'typing', 'future', 'light', 'success', 'effort', 'nation', 'technology', 'happiness', 'peace', 'development', 'love', 'smart', 'world'];
+
+    let source = [];
+    if (form.typingLang === 'ENGLISH') source = englishWords;
+    else if (form.typingLang === 'KHMER') source = khmerWords;
+    else source = [...khmerWords, ...englishWords];
+
+    let result = [];
+    for (let i = 0; i < form.typingLength; i++) {
+      const w = source[Math.floor(Math.random() * source.length)];
+      result.push(w);
+    }
+    setForm(prev => ({ ...prev, typingCustomText: result.join(' ') }));
+  };
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -48,6 +83,16 @@ export default function QuestionsClient({ exam }: { exam: any }) {
         }
       }
     } catch (e) {}
+    
+    // Sync timeUnit and timeValue
+    let tVal = defaults.timeLimitSeconds, tUnit = 'SECONDS';
+    if (defaults.timeLimitSeconds % 3600 === 0 && defaults.timeLimitSeconds >= 3600) {
+      tUnit = 'HOURS'; tVal = defaults.timeLimitSeconds / 3600;
+    } else if (defaults.timeLimitSeconds % 60 === 0 && defaults.timeLimitSeconds >= 60) {
+      tUnit = 'MINUTES'; tVal = defaults.timeLimitSeconds / 60;
+    }
+    setTimeValue(tVal); setTimeUnit(tUnit);
+
     setForm(defaults);
     setModal(true);
   };
@@ -58,15 +103,39 @@ export default function QuestionsClient({ exam }: { exam: any }) {
     try { parsedOpts = JSON.parse(q.options); } catch { parsedOpts = [q.options]; }
     try { parsedAns = JSON.parse(q.correctAnswer).map(String); } catch { parsedAns = [q.correctAnswer]; }
     
+    let tLang = 'BOTH', tMode = 'AUTO', tLen = 50, tCustom = '';
+    if (q.type === 'TYPING') {
+      try {
+        const tConf = JSON.parse(q.options);
+        tLang = tConf.lang || 'BOTH';
+        tMode = tConf.mode || 'AUTO';
+        tLen = tConf.wordCount || 50;
+        tCustom = q.correctAnswer || '';
+      } catch (e) {}
+    }
+
     setForm({
       id: q.id,
       text: q.text,
       type: q.type,
-      options: parsedOpts,
-      correctAnswer: parsedAns,
+      options: q.type === 'TYPING' ? [] : parsedOpts,
+      correctAnswer: q.type === 'TYPING' ? [] : parsedAns,
       timeLimitSeconds: q.timeLimitSeconds,
-      points: q.points
+      points: q.points,
+      typingLang: tLang,
+      typingMode: tMode,
+      typingLength: tLen,
+      typingCustomText: tCustom
     });
+    
+    let tVal = q.timeLimitSeconds, tUnit = 'SECONDS';
+    if (q.timeLimitSeconds % 3600 === 0 && q.timeLimitSeconds >= 3600) {
+      tUnit = 'HOURS'; tVal = q.timeLimitSeconds / 3600;
+    } else if (q.timeLimitSeconds % 60 === 0 && q.timeLimitSeconds >= 60) {
+      tUnit = 'MINUTES'; tVal = q.timeLimitSeconds / 60;
+    }
+    setTimeValue(tVal); setTimeUnit(tUnit);
+    
     setModal(true);
   };
 
@@ -83,10 +152,11 @@ export default function QuestionsClient({ exam }: { exam: any }) {
     setSubmitting(true);
     
     try {
+      const isTyping = form.type === 'TYPING';
       const payload = {
         ...form,
-        options: JSON.stringify(form.options),
-        correctAnswer: JSON.stringify(form.correctAnswer)
+        options: isTyping ? JSON.stringify({ lang: form.typingLang, mode: form.typingMode, wordCount: form.typingLength }) : JSON.stringify(form.options),
+        correctAnswer: isTyping ? form.typingCustomText : JSON.stringify(form.correctAnswer)
       };
 
       const url = form.id ? `/api/exams/${exam.id}/questions/${form.id}` : `/api/exams/${exam.id}/questions`;
@@ -337,7 +407,9 @@ export default function QuestionsClient({ exam }: { exam: any }) {
                 <div style={{ display: 'flex', gap: '1rem', color: '#64748b', fontSize: '0.85rem' }}>
                   <span style={{ background: '#f1f5f9', padding: '4px 8px', borderRadius: 6 }}>⏱ {q.timeLimitSeconds} វិនាទី</span>
                   <span style={{ background: '#eff6ff', padding: '4px 8px', borderRadius: 6, color: '#3b82f6' }}>⭐ {q.points} ពិន្ទុ</span>
-                  <span style={{ background: '#f8fafc', padding: '4px 8px', borderRadius: 6 }}>{q.type === 'SINGLE' ? 'រើសបានមួយ' : 'រើសបានច្រើន'}</span>
+                  <span style={{ background: q.type === 'TYPING' ? '#fdf2f8' : '#f8fafc', color: q.type === 'TYPING' ? '#db2777' : 'inherit', padding: '4px 8px', borderRadius: 6 }}>
+                    {q.type === 'SINGLE' ? 'រើសបានមួយ' : q.type === 'MULTIPLE' ? 'រើសបានច្រើន' : 'វាយអត្ថបទ'}
+                  </span>
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-start' }}>
@@ -387,25 +459,35 @@ export default function QuestionsClient({ exam }: { exam: any }) {
             
             <form onSubmit={handleSubmit} className={styles.form} style={{ flex: 1, overflowY: 'auto', padding: '24px 28px', margin: 0 }}>
               <div className={styles.formGroup}>
-                <label>ខ្លឹមសារសំណួរ *</label>
-                <textarea className={styles.input} required rows={3}
+                <label>{isTypingCourse ? 'ឈ្មោះចំណងជើងវិញ្ញាសា *' : 'ខ្លឹមសារសំណួរ *'}</label>
+                <textarea className={styles.input} required rows={isTypingCourse ? 2 : 3}
                   value={form.text} onChange={e => setForm({...form, text: e.target.value})} />
               </div>
 
               <div className={styles.formRow}>
+                {!isTypingCourse && (
+                  <div className={styles.formGroup}>
+                    <label>ប្រភេទសំណួរ</label>
+                    <select className={styles.input} value={form.type} onChange={e => {
+                      setForm({...form, type: e.target.value, correctAnswer: []});
+                    }}>
+                      <option value="SINGLE">រើសបានមួយ (Single Choice)</option>
+                      <option value="MULTIPLE">រើសបានច្រើន (Multiple Choice)</option>
+                      <option value="TYPING">វាយអត្ថបទ (Typing Test)</option>
+                    </select>
+                  </div>
+                )}
                 <div className={styles.formGroup}>
-                  <label>ប្រភេទសំណួរ</label>
-                  <select className={styles.input} value={form.type} onChange={e => {
-                    setForm({...form, type: e.target.value, correctAnswer: []});
-                  }}>
-                    <option value="SINGLE">រើសបានមួយ (Single Choice)</option>
-                    <option value="MULTIPLE">រើសបានច្រើន (Multiple Choice)</option>
-                  </select>
-                </div>
-                <div className={styles.formGroup}>
-                  <label>កំណត់ម៉ោង (វិនាទី) *</label>
-                  <input type="number" min="5" className={styles.input} required
-                    value={form.timeLimitSeconds} onChange={e => setForm({...form, timeLimitSeconds: Number(e.target.value)})} />
+                  <label>កំណត់ម៉ោង *</label>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <input type="number" min="1" className={styles.input} required
+                      value={timeValue} onChange={e => handleTimeChange(Number(e.target.value), timeUnit)} />
+                    <select className={styles.input} style={{ width: '120px' }} value={timeUnit} onChange={e => handleTimeChange(timeValue, e.target.value)}>
+                      <option value="SECONDS">វិនាទី</option>
+                      <option value="MINUTES">នាទី</option>
+                      <option value="HOURS">ម៉ោង</option>
+                    </select>
+                  </div>
                 </div>
                 <div className={styles.formGroup}>
                   <label>ពិន្ទុ *</label>
@@ -414,40 +496,88 @@ export default function QuestionsClient({ exam }: { exam: any }) {
                 </div>
               </div>
 
-              <div className={styles.formGroup} style={{ marginTop: '1rem' }}>
-                <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span>ជម្រើសចម្លើយ (ធីកយកចម្លើយដែលត្រឹមត្រូវ) *</span>
-                  <button type="button" onClick={addOption} style={{ background: '#f1f5f9', border: 'none', padding: '4px 12px', borderRadius: 4, cursor: 'pointer', fontSize: '0.85rem' }}>+ បន្ថែមជម្រើស</button>
-                </label>
-                
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem' }}>
-                  {form.options.map((opt, i) => (
-                    <div key={i} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                      <input 
-                        type={form.type === 'SINGLE' ? 'radio' : 'checkbox'} 
-                        checked={form.correctAnswer.includes(String(i))}
-                        onChange={() => toggleCorrect(String(i))}
-                        style={{ width: 20, height: 20, cursor: 'pointer' }}
-                      />
-                      <input type="text" className={styles.input} style={{ flex: 1 }} required
-                        value={opt} onChange={e => updateOption(i, e.target.value)} placeholder={`ជម្រើសទី ${i + 1}`} />
-                      {form.options.length > 2 && (
-                        <button type="button" onClick={() => removeOption(i)} style={{ background: '#fee2e2', color: '#ef4444', border: 'none', width: 36, height: 36, borderRadius: 8, cursor: 'pointer' }}>✕</button>
-                      )}
-                    </div>
-                  ))}
+              {form.type !== 'TYPING' ? (
+                <div className={styles.formGroup} style={{ marginTop: '1rem' }}>
+                  <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span>ជម្រើសចម្លើយ (ធីកយកចម្លើយដែលត្រឹមត្រូវ) *</span>
+                    <button type="button" onClick={addOption} style={{ background: '#f1f5f9', border: 'none', padding: '4px 12px', borderRadius: 4, cursor: 'pointer', fontSize: '0.85rem' }}>+ បន្ថែមជម្រើស</button>
+                  </label>
+                  
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem' }}>
+                    {form.options.map((opt, i) => (
+                      <div key={i} style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                        <input 
+                          type={form.type === 'SINGLE' ? 'radio' : 'checkbox'} 
+                          checked={form.correctAnswer.includes(String(i))}
+                          onChange={() => toggleCorrect(String(i))}
+                          style={{ width: 20, height: 20, cursor: 'pointer' }}
+                        />
+                        <input type="text" className={styles.input} style={{ flex: 1 }} required
+                          value={opt} onChange={e => updateOption(i, e.target.value)} placeholder={`ជម្រើសទី ${i + 1}`} />
+                        {form.options.length > 2 && (
+                          <button type="button" onClick={() => removeOption(i)} style={{ background: '#fee2e2', color: '#ef4444', border: 'none', width: 36, height: 36, borderRadius: 8, cursor: 'pointer' }}>✕</button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  {form.correctAnswer.length === 0 && <div style={{ color: '#ef4444', fontSize: '0.8rem', marginTop: '0.5rem' }}>សូមជ្រើសរើសចម្លើយត្រឹមត្រូវយ៉ាងហោចណាស់១</div>}
                 </div>
-                {form.correctAnswer.length === 0 && <div style={{ color: '#ef4444', fontSize: '0.8rem', marginTop: '0.5rem' }}>សូមជ្រើសរើសចម្លើយត្រឹមត្រូវយ៉ាងហោចណាស់១</div>}
-              </div>
+              ) : (
+                <>
+                  <div className={styles.formRow} style={{ marginTop: '1rem' }}>
+                    <div className={styles.formGroup}>
+                      <label>ជម្រើសភាសា *</label>
+                      <select className={styles.input} value={form.typingLang} onChange={e => setForm({...form, typingLang: e.target.value})}>
+                        <option value="BOTH">អង់គ្លេស និងខ្មែរ (English & Khmer)</option>
+                        <option value="ENGLISH">អង់គ្លេស (English)</option>
+                        <option value="KHMER">ខ្មែរ (Khmer)</option>
+                      </select>
+                    </div>
+                    <div className={styles.formGroup}>
+                      <label>របៀបបង្កើតពាក្យ *</label>
+                      <select className={styles.input} value={form.typingMode} onChange={e => setForm({...form, typingMode: e.target.value})}>
+                        <option value="AUTO">បង្កើតដោយស្វ័យប្រវត្តិ (Auto-generate)</option>
+                        <option value="CUSTOM">កំណត់ខ្លួនឯង (Custom text)</option>
+                      </select>
+                    </div>
+                    {form.typingMode === 'AUTO' && (
+                      <div className={styles.formGroup}>
+                        <label>ចំនួនពាក្យសរុប *</label>
+                        <div style={{ display: 'flex', gap: '8px' }}>
+                          <input type="number" className={styles.input} min="10" max="1000" required value={form.typingLength} onChange={e => setForm({...form, typingLength: Number(e.target.value)})} />
+                          <button type="button" onClick={handleGenerateText} style={{ background: '#3b82f6', color: 'white', border: 'none', padding: '0 16px', borderRadius: 8, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                            បង្កើតពាក្យឥឡូវនេះ
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  {form.typingMode === 'CUSTOM' ? (
+                    <div className={styles.formGroup} style={{ marginTop: '1rem' }}>
+                      <label>អត្ថបទ ឬពាក្យសម្រាប់វាយ *</label>
+                      <textarea className={styles.input} rows={4} required placeholder="បញ្ចូលអត្ថបទ ឬពាក្យនៅទីនេះ..." value={form.typingCustomText} onChange={e => setForm({...form, typingCustomText: e.target.value})} />
+                    </div>
+                  ) : (
+                    form.typingCustomText && (
+                      <div className={styles.formGroup} style={{ marginTop: '1rem' }}>
+                        <label>អត្ថបទដែលបានបង្កើត (មើលមុន)៖</label>
+                        <div style={{ padding: '12px', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: 8, minHeight: '80px', fontFamily: 'monospace', fontSize: '1rem', color: '#334155' }}>
+                          {form.typingCustomText}
+                        </div>
+                      </div>
+                    )
+                  )}
+                </>
+              )}
 
               <div className={styles.formActions} style={{ marginTop: '2rem' }}>
                 <button type="button" className={styles.cancelBtn} onClick={() => setModal(false)}>បោះបង់</button>
                 {!form.id && (
-                  <button type="submit" name="addAnother" style={{ background: '#f8fafc', color: '#3b82f6', border: '1px solid #bfdbfe', padding: '9px 18px', borderRadius: 8, fontWeight: 600, cursor: 'pointer' }} disabled={submitting || form.correctAnswer.length === 0}>
+                  <button type="submit" name="addAnother" style={{ background: '#f8fafc', color: '#3b82f6', border: '1px solid #bfdbfe', padding: '9px 18px', borderRadius: 8, fontWeight: 600, cursor: 'pointer' }} disabled={submitting || (form.type !== 'TYPING' && form.correctAnswer.length === 0)}>
                     {submitting ? 'កំពុងរក្សាទុក...' : 'រក្សាទុក និងបន្ថែមទៀត'}
                   </button>
                 )}
-                <button type="submit" name="save" className="btn-primary" disabled={submitting || form.correctAnswer.length === 0}>
+                <button type="submit" name="save" className="btn-primary" disabled={submitting || (form.type !== 'TYPING' && form.correctAnswer.length === 0)}>
                   {submitting ? 'កំពុងរក្សាទុក...' : 'រក្សាទុក'}
                 </button>
               </div>
@@ -483,6 +613,30 @@ export default function QuestionsClient({ exam }: { exam: any }) {
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               {(() => {
+                if (previewTarget.type === 'TYPING') {
+                  let conf: any = {};
+                  try { conf = JSON.parse(previewTarget.options); } catch {}
+                  return (
+                    <div style={{ padding: '16px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 12 }}>
+                      <div style={{ marginBottom: 10, fontSize: '0.9rem', color: '#64748b', display: 'flex', gap: '1rem' }}>
+                        <span><strong>ភាសា៖</strong> {conf.lang === 'ENGLISH' ? 'អង់គ្លេស' : conf.lang === 'KHMER' ? 'ខ្មែរ' : 'អង់គ្លេស និងខ្មែរ'}</span>
+                        <span><strong>របៀប៖</strong> {conf.mode === 'AUTO' ? 'បង្កើតដោយស្វ័យប្រវត្តិ' : 'កំណត់ខ្លួនឯង'}</span>
+                        {conf.mode === 'AUTO' && <span><strong>ចំនួនពាក្យ៖</strong> {conf.wordCount} ពាក្យ</span>}
+                      </div>
+                      {conf.mode === 'CUSTOM' && (
+                        <div style={{ background: '#fff', padding: '12px', border: '1px solid #cbd5e1', borderRadius: 8, fontFamily: 'monospace', fontSize: '1rem', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
+                          {previewTarget.correctAnswer}
+                        </div>
+                      )}
+                      {conf.mode === 'AUTO' && (
+                        <div style={{ background: '#fff', padding: '12px', border: '1px dashed #cbd5e1', borderRadius: 8, textAlign: 'left', color: '#475569', fontStyle: 'italic', fontFamily: 'monospace' }}>
+                          {previewTarget.correctAnswer || '(សូមចុច "កែប្រែ" ដើម្បីបង្កើតពាក្យ)'}
+                        </div>
+                      )}
+                    </div>
+                  );
+                }
+
                 let opts = [];
                 let correctAns = [];
                 try { opts = JSON.parse(previewTarget.options); } catch { opts = [previewTarget.options]; }

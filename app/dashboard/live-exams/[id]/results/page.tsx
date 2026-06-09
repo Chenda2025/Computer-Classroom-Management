@@ -7,7 +7,7 @@ export default async function AdminExamResultsPage({ params }: { params: Promise
   const session = await prisma.examSession.findUnique({
     where: { id },
     include: {
-      exam: { include: { course: true } },
+      exam: { include: { course: true, questions: { orderBy: { order: 'asc' } } } },
       participations: {
         where: { status: 'APPROVED' },
         include: {

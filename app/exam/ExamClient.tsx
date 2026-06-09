@@ -24,6 +24,11 @@ export default function ExamClient() {
   const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
   const [score, setScore] = useState(0);
 
+  // Review state
+  const [reviewData, setReviewData] = useState<any>(null);
+  const [showReview, setShowReview] = useState(false);
+  const [reviewLoading, setReviewLoading] = useState(false);
+
   // Restore session from localStorage
   useEffect(() => {
     const saved = localStorage.getItem('exam_session');
@@ -186,14 +191,40 @@ export default function ExamClient() {
     }
   };
 
+  // Auto-fetch review when entering RESULTS
+  useEffect(() => {
+    if (step !== 'RESULTS' || !participationId || reviewData) return;
+    setReviewLoading(true);
+    fetch('/api/exam/review', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ participationId })
+    })
+      .then(res => res.json())
+      .then(data => {
+        if (data.questions) {
+          setReviewData(data);
+          setShowReview(true);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setReviewLoading(false));
+  }, [step, participationId]);
+
   // UI Helpers
-  const getGrade = (pts: number) => {
-    if (pts < 60) return { label: 'ធ្លាក់', color: '#ef4444' };
-    if (pts < 70) return { label: 'មធ្យម', color: '#f59e0b' };
-    if (pts < 80) return { label: 'ល្អបង្គួរ', color: '#3b82f6' };
-    if (pts < 90) return { label: 'ល្អ', color: '#8b5cf6' };
+  const getGrade = (pct: number) => {
+    if (pct < 60) return { label: 'ធ្លាក់', color: '#ef4444' };
+    if (pct < 70) return { label: 'មធ្យម', color: '#f59e0b' };
+    if (pct < 80) return { label: 'ល្អបង្គួរ', color: '#3b82f6' };
+    if (pct < 90) return { label: 'ល្អ', color: '#8b5cf6' };
     return { label: 'ល្អណាស់', color: '#10b981' };
   };
+
+  const scorePct = reviewData?.totalPoints > 0
+    ? Math.round((score / reviewData.totalPoints) * 100)
+    : score;
+  const passingPct = reviewData?.passingScore ?? 60;
+  const passed = scorePct >= passingPct;
 
   const currentQ = examData?.questions?.[currentQuestionIndex];
 
@@ -305,33 +336,123 @@ export default function ExamClient() {
         {step === 'RESULTS' && (
           <div className="animate-fade-in" style={{ textAlign: 'center', padding: '2rem 0' }}>
             <div style={{ fontSize: '5rem', marginBottom: '1rem' }}>
-              {score >= 60 ? '🎉' : '💔'}
+              {passed ? '🎉' : '💔'}
             </div>
             <h2 style={{ color: '#1e293b', marginBottom: '2rem', fontSize: '2rem' }}>ការប្រឡងត្រូវបានបញ្ចប់!</h2>
-            
+
             <div style={{ background: '#f8fafc', padding: '2rem', borderRadius: 16, display: 'inline-block', minWidth: 300 }}>
               <div style={{ color: '#64748b', marginBottom: '0.5rem' }}>ពិន្ទុសរុបរបស់អ្នក</div>
-              <div style={{ fontSize: '3.5rem', fontWeight: 900, color: 'var(--color-accent)', marginBottom: '1.5rem', lineHeight: 1 }}>
-                {score}
+              <div style={{ fontSize: '3.5rem', fontWeight: 900, color: 'var(--color-accent)', marginBottom: '0.25rem', lineHeight: 1 }}>
+                {score}{reviewData ? <span style={{ fontSize: '1.5rem', fontWeight: 500, color: '#94a3b8' }}>/{reviewData.totalPoints}</span> : null}
               </div>
-              
+              {reviewData && (
+                <div style={{ fontSize: '0.9rem', color: '#64748b', marginBottom: '1rem' }}>
+                  ត្រូវ {reviewData.correctCount}/{reviewData.totalQuestions} សំណួរ
+                </div>
+              )}
+              {reviewLoading && !reviewData && (
+                <div style={{ fontSize: '0.85rem', color: '#94a3b8', marginBottom: '1rem' }}>⏳ កំពុងផ្ទុក...</div>
+              )}
+
               <div style={{ display: 'flex', justifyContent: 'center', gap: '2rem', borderTop: '1px solid #e2e8f0', paddingTop: '1.5rem' }}>
                 <div>
                   <div style={{ fontSize: '0.85rem', color: '#94a3b8', marginBottom: 4 }}>លទ្ធផល</div>
-                  <div style={{ fontWeight: 700, color: getGrade(score).color, fontSize: '1.2rem' }}>{score >= 60 ? 'ជាប់' : 'ធ្លាក់'}</div>
+                  <div style={{ fontWeight: 700, color: passed ? '#16a34a' : '#ef4444', fontSize: '1.2rem' }}>{passed ? 'ជាប់' : 'ធ្លាក់'}</div>
                 </div>
                 <div>
                   <div style={{ fontSize: '0.85rem', color: '#94a3b8', marginBottom: 4 }}>និទ្ទេស</div>
-                  <div style={{ fontWeight: 700, color: '#1e293b', fontSize: '1.2rem' }}>{getGrade(score).label}</div>
+                  <div style={{ fontWeight: 700, color: '#1e293b', fontSize: '1.2rem' }}>{getGrade(scorePct).label}</div>
                 </div>
               </div>
             </div>
-            
-            <div style={{ marginTop: '3rem' }}>
+
+            <div style={{ marginTop: '2rem', display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'center' }}>
+              {reviewData && (
+                <button
+                  onClick={() => setShowReview(v => !v)}
+                  style={{
+                    padding: '10px 22px', background: showReview ? '#f1f5f9' : '#3b82f6', color: showReview ? '#475569' : 'white',
+                    border: showReview ? '2px solid #e2e8f0' : 'none', borderRadius: 10, fontSize: '1rem', fontWeight: 600, cursor: 'pointer',
+                  }}
+                >
+                  {showReview ? '🔼 លាក់ការពិនិត្យ' : '📋 ពិនិត្យចម្លើយ'}
+                </button>
+              )}
               <button onClick={() => window.location.href = '/'} style={{ background: 'white', border: '2px solid #e2e8f0', padding: '12px 24px', borderRadius: 8, fontWeight: 600, color: '#475569', cursor: 'pointer' }}>
                 ត្រឡប់ទៅទំព័រដើម
               </button>
             </div>
+
+            {/* Answer Review List */}
+            {showReview && reviewData && (
+              <div style={{ marginTop: '2rem', textAlign: 'left', maxWidth: 700, margin: '2rem auto 0' }}>
+                <h3 style={{ color: '#1e293b', marginBottom: '1rem', fontSize: '1.2rem', textAlign: 'center' }}>
+                  📝 ការពិនិត្យចម្លើយ ({reviewData.correctCount}/{reviewData.totalQuestions} ត្រូវ)
+                </h3>
+                {reviewData.questions.map((q: any, qi: number) => (
+                  <div key={q.id} style={{
+                    background: q.isCorrect ? '#f0fdf4' : '#fef2f2',
+                    border: `2px solid ${q.isCorrect ? '#86efac' : '#fca5a5'}`,
+                    borderRadius: 12, padding: '1rem', marginBottom: '1rem',
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.8rem' }}>
+                      <div style={{ fontWeight: 700, color: '#1e293b', fontSize: '1rem' }}>
+                        {q.isCorrect ? '✅' : '❌'} សំណួរទី {qi + 1}
+                      </div>
+                      <div style={{
+                        background: q.isCorrect ? '#22c55e' : '#ef4444', color: 'white',
+                        padding: '2px 10px', borderRadius: 20, fontSize: '0.8rem', fontWeight: 700
+                      }}>
+                        {q.earnedPoints}/{q.points} ពិន្ទុ
+                      </div>
+                    </div>
+                    <div style={{ fontSize: '1rem', color: '#1e293b', marginBottom: '0.8rem', lineHeight: 1.6, fontWeight: 600 }}>
+                      {q.text}
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      {q.options.map((opt: string, i: number) => {
+                        const idx = String(i);
+                        const isStudentPick = q.selectedOptions.includes(idx);
+                        const isCorrectAnswer = q.correctAnswer.includes(idx);
+                        let bg = 'white'; let borderColor = '#e2e8f0'; let textColor = '#475569'; let icon = '';
+                        if (isCorrectAnswer && isStudentPick) {
+                          bg = '#dcfce7'; borderColor = '#22c55e'; textColor = '#166534'; icon = '✅';
+                        } else if (isCorrectAnswer && !isStudentPick) {
+                          bg = '#dbeafe'; borderColor = '#3b82f6'; textColor = '#1e40af'; icon = '🔵';
+                        } else if (isStudentPick && !isCorrectAnswer) {
+                          bg = '#fee2e2'; borderColor = '#ef4444'; textColor = '#991b1b'; icon = '❌';
+                        }
+                        return (
+                          <div key={i} style={{
+                            padding: '10px 14px', borderRadius: 8, fontSize: '0.95rem',
+                            background: bg, border: `2px solid ${borderColor}`, color: textColor,
+                            fontWeight: (isStudentPick || isCorrectAnswer) ? 600 : 400,
+                            display: 'flex', alignItems: 'center', gap: 8
+                          }}>
+                            <span style={{
+                              width: 24, height: 24, borderRadius: q.type === 'SINGLE' ? '50%' : 6,
+                              background: (isStudentPick || isCorrectAnswer) ? borderColor : '#f1f5f9',
+                              color: (isStudentPick || isCorrectAnswer) ? 'white' : '#94a3b8',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              fontSize: '0.75rem', fontWeight: 700, flexShrink: 0
+                            }}>
+                              {['ក','ខ','គ','ឃ','ង','ច','ឆ','ជ'][i] || String.fromCharCode(65+i)}
+                            </span>
+                            <span style={{ flex: 1 }}>{opt}</span>
+                            {icon && <span>{icon}</span>}
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {!q.isCorrect && (
+                      <div style={{ marginTop: 8, fontSize: '0.8rem', color: '#64748b', fontStyle: 'italic' }}>
+                        🔵 = ចម្លើយត្រឹមត្រូវ &nbsp;|&nbsp; ❌ = ចម្លើយអ្នកជ្រើស (ខុស)
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 

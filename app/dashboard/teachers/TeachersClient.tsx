@@ -374,10 +374,17 @@ export default function TeachersClient({ initialTeachers, courses, userRole }: P
 
                 {/* Subject badge */}
                 {t.subject && (
-                  <div className={tc.subjectWrap}>
-                    <span className={tc.subjectBadge} style={{ background: sc + '18', color: sc, border: `1px solid ${sc}33` }}>
-                      📖 {t.subject}
-                    </span>
+                  <div className={tc.subjectWrap} style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', justifyContent: 'center' }}>
+                    {t.subject.split(',').map(sub => {
+                      const sName = sub.trim();
+                      if (!sName) return null;
+                      const sColor = subjectColor(sName);
+                      return (
+                        <span key={sName} className={tc.subjectBadge} style={{ background: sColor, color: '#ffffff', border: `1px solid ${sColor}`, fontSize: '0.75rem', padding: '2px 8px', borderRadius: '12px', fontWeight: 500 }}>
+                          {sName}
+                        </span>
+                      );
+                    })}
                   </div>
                 )}
 
@@ -514,10 +521,24 @@ export default function TeachersClient({ initialTeachers, courses, userRole }: P
               </div>
               <div className={styles.formGroup}>
                 <label>មុខវិជ្ជា</label>
-                <select className={styles.input} value={form.subject} onChange={e => set('subject', e.target.value)}>
-                  <option value="">-- ជ្រើសរើស --</option>
-                  {courses.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
-                </select>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginTop: '8px' }}>
+                  {courses.map(c => {
+                    const selected = form.subject ? form.subject.split(',').map(s => s.trim()).filter(Boolean) : [];
+                    const isChecked = selected.includes(c.name);
+                    return (
+                      <label key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: isChecked ? '#0D044A' : '#f1f5f9', color: isChecked ? '#ffffff' : '#2602F2', padding: '6px 12px', borderRadius: '20px', fontSize: '0.85rem', cursor: 'pointer', border: isChecked ? '1px solid #0D044A' : '1px solid #2602F2', transition: 'all 0.2s' }}>
+                        <input type="checkbox" checked={isChecked} style={{ margin: 0, accentColor: isChecked ? '#ffffff' : '#2602F2' }} onChange={e => {
+                          if (e.target.checked) {
+                            set('subject', [...selected, c.name].join(', '));
+                          } else {
+                            set('subject', selected.filter(s => s !== c.name).join(', '));
+                          }
+                        }} />
+                        {c.name}
+                      </label>
+                    );
+                  })}
+                </div>
               </div>
               <div className={styles.formActions}>
                 <button type="button" className={styles.cancelBtn} onClick={() => setModal(false)} disabled={submitting}>បោះបង់</button>
@@ -600,7 +621,18 @@ export default function TeachersClient({ initialTeachers, courses, userRole }: P
 
                 <div className={tc.infoItem}>
                   <div className={tc.infoItemLabel}>📖 មុខវិជ្ជា</div>
-                  <div className={tc.infoItemValue}>{infoTeacher.subject ?? '—'}</div>
+                  <div className={tc.infoItemValue} style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '4px' }}>
+                    {!infoTeacher.subject ? '—' : infoTeacher.subject.split(',').map(sub => {
+                      const sName = sub.trim();
+                      if (!sName) return null;
+                      const sColor = subjectColor(sName);
+                      return (
+                        <span key={sName} style={{ background: sColor, color: '#ffffff', border: `1px solid ${sColor}`, fontSize: '0.85rem', padding: '2px 10px', borderRadius: '12px', fontWeight: 500 }}>
+                          {sName}
+                        </span>
+                      );
+                    })}
+                  </div>
                 </div>
 
                 {infoTeacher.notes && (
