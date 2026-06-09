@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import html2canvas from 'html2canvas';
 
 interface ExamResult { id: string; score: number; createdAt: string; exam: { course: { name: string }, questions?: { points: number }[] } }
 interface ExamParticipation { id: string; currentScore: number; createdAt: string; session: { exam: { course: { name: string }, questions?: { points: number }[] } }; }
@@ -94,6 +93,7 @@ export default function CertificatePrintModal({ certificate, onClose }: Props) {
     try {
       await new Promise(res => setTimeout(res, 50));
       
+      const html2canvas = (await import('html2canvas')).default;
       const canvas = await html2canvas(certRef.current, {
         scale: 2,
         useCORS: true,
