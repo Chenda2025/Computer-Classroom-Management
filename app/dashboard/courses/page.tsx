@@ -18,7 +18,7 @@ export default async function CoursesPage() {
     }),
     prisma.student.findMany({
       orderBy: { name: 'asc' },
-      select: { id: true, studentCode: true, name: true, phone: true },
+      select: { id: true, studentCode: true, name: true, phone: true, photoUrl: true },
     }),
     prisma.enrollment.findMany({
       select: { studentId: true },
