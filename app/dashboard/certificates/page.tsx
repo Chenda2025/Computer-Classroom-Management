@@ -15,6 +15,7 @@ export default async function CertificatesPage() {
           select: { 
             id: true, studentCode: true, name: true, photoUrl: true, gender: true, dateOfBirth: true, grade: true,
             enrollments: { include: { course: true } },
+            results: { include: { exam: { include: { course: true, questions: { select: { points: true } } } } }, orderBy: { createdAt: 'desc' } },
             examParticipations: { include: { session: { include: { exam: { include: { course: true, questions: { select: { points: true } } } } } } }, orderBy: { createdAt: 'desc' } }
           } 
         } 

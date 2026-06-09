@@ -3,9 +3,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 
+interface ExamResult { id: string; score: number; createdAt: string; exam: { course: { name: string }, questions?: { points: number }[] } }
 interface ExamParticipation { id: string; currentScore: number; createdAt: string; session: { exam: { course: { name: string }, questions?: { points: number }[] } }; }
 interface Enrollment { id: string; createdAt: string; course: { name: string }; }
-interface Student { id: string; studentCode: string; name: string; photoUrl?: string | null; gender?: string | null; dateOfBirth?: string | null; grade?: string | null; enrollments?: Enrollment[]; examParticipations?: ExamParticipation[]; }
+interface Student { id: string; studentCode: string; name: string; photoUrl?: string | null; gender?: string | null; dateOfBirth?: string | null; grade?: string | null; enrollments?: Enrollment[]; examParticipations?: ExamParticipation[]; results?: ExamResult[]; }
 interface Certificate {
   id: string; title: string; issuedDate: string; description: string | null;
   studentId: string; student: Student; createdAt: string; updatedAt: string;
@@ -247,19 +248,24 @@ export default function CertificatePrintModal({ certificate, onClose }: Props) {
         return `${day}-${month}-${year}`;
       };
 
+      const latestResult = certificate.student.results?.[0];
       const latestExam = certificate.student.examParticipations?.[0];
-      const latestEnrollment = latestExam 
-        ? certificate.student.enrollments?.find(e => e.course.name === latestExam.session.exam.course.name) || certificate.student.enrollments?.[0]
-        : certificate.student.enrollments?.[0];
+      
+      const latestEnrollment = latestResult
+        ? certificate.student.enrollments?.find(e => e.course.name === latestResult.exam.course.name) || certificate.student.enrollments?.[0]
+        : (latestExam 
+          ? certificate.student.enrollments?.find(e => e.course.name === latestExam.session.exam.course.name) || certificate.student.enrollments?.[0]
+          : certificate.student.enrollments?.[0]);
 
-      const dynamicCourse = latestExam?.session?.exam?.course?.name || latestEnrollment?.course?.name || certificate.title || '';
-      const score = latestExam?.currentScore;
+      const dynamicCourse = latestResult?.exam?.course?.name || latestExam?.session?.exam?.course?.name || latestEnrollment?.course?.name || certificate.title || '';
+      
+      const score = latestResult?.score !== undefined ? latestResult.score : latestExam?.currentScore;
       
       let dynamicGrade = '';
       let dynamicGradeEn = '';
       if (score !== undefined) {
         let pct = score;
-        const questions = latestExam?.session?.exam?.questions;
+        const questions = latestResult?.exam?.questions || latestExam?.session?.exam?.questions;
         if (questions && questions.length > 0) {
           const totalPoints = questions.reduce((sum, q) => sum + q.points, 0);
           if (totalPoints > 0) {
