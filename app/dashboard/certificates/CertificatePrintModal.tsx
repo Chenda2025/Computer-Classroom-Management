@@ -426,7 +426,7 @@ export default function CertificatePrintModal({ certificate, onClose }: Props) {
           .cert-guides { display: none !important; }
           body { background: #fff !important; margin: 0; padding: 0; }
           body > :not(#cert-print-area) { display: none !important; }
-          #cert-print-area { display: flex !important; align-items: center; justify-content: center; width: 100vw; height: 100vh; background: #fff; padding: 0; box-sizing: border-box; }
+          #cert-print-area { display: block !important; width: 1122px !important; height: 793px !important; background: #fff; padding: 0; margin: 0; position: absolute; top: 0; left: 0; overflow: hidden; }
           * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
         }
         #cert-print-area { display: none; }
