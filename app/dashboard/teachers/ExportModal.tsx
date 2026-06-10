@@ -30,7 +30,7 @@ interface Teacher {
   dateOfBirth: string | null;
   nationality: string | null;
   subject: string | null;
-  photoUrl: string | null;
+  photoUrl?: string | null;
   notes: string | null;
   createdAt: string;
 }
@@ -367,9 +367,12 @@ export default function ExportModal({ teachers, onClose }: Props) {
                   {activeCols.map(c => (
                     <td key={c.key} style={{ border: '1px solid #333', padding: '6px 8px', textAlign: c.key === 'photo' ? 'center' : 'left', verticalAlign: 'middle', color: '#000691' }}>
                       {c.key === 'photo' ? (
-                        s.photoUrl ? (
-                          <img src={s.photoUrl} alt="profile" style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 4, display: 'block', margin: '0 auto' }} />
-                        ) : '—'
+                        <img 
+                          src={`/api/teachers/${s.id}/photo`} 
+                          alt="profile" 
+                          style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 4, display: 'block', margin: '0 auto' }} 
+                          onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                        />
                       ) : (
                         cellValue(s, c.key, i)
                       )}
@@ -631,7 +634,12 @@ export default function ExportModal({ teachers, onClose }: Props) {
                           {activeCols.map(c => (
                             <td key={c.key} style={{ padding: '8px 12px', borderBottom: '1px solid var(--color-border)', color: 'var(--color-text-secondary)', textAlign: c.key === 'photo' ? 'center' : 'left' }}>
                               {c.key === 'photo' ? (
-                                s.photoUrl ? <img src={s.photoUrl} alt="" style={{ width: 32, height: 32, objectFit: 'cover', borderRadius: 4, display: 'block', margin: '0 auto' }} /> : '—'
+                                <img 
+                                  src={`/api/teachers/${s.id}/photo`} 
+                                  alt="" 
+                                  style={{ width: 32, height: 32, objectFit: 'cover', borderRadius: 4, display: 'block', margin: '0 auto' }} 
+                                  onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                                />
                               ) : (
                                 cellValue(s, c.key, i)
                               )}

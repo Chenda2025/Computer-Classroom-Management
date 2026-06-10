@@ -12,6 +12,7 @@ export default async function StudentsPage() {
   const students = await prisma.student.findMany({
     take: 1000,
     orderBy: { createdAt: 'desc' },
+    omit: { photoUrl: true },
     include: {
       _count: { select: { enrollments: true } },
       enrollments: { select: { courseId: true } },

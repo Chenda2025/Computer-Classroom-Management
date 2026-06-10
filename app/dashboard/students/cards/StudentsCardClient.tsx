@@ -4,12 +4,18 @@ import Link from 'next/link';
 import styles from '../students.module.css';
 import cardStyles from './cards.module.css';
 
+const Avatar = ({ id, name, imgClass, fallbackClass, style }: { id: string, name: string, imgClass: string, fallbackClass: string, style?: any }) => {
+  const [error, setError] = useState(false);
+  if (error) return <div className={fallbackClass} style={style}>{name.charAt(0)}</div>;
+  return <img src={`/api/students/${id}/photo`} alt={name} className={imgClass} style={style} onError={() => setError(true)} />;
+};
+
 interface Student {
   id: string;
   studentCode: string;
   name: string;
   phone: string | null;
-  photoUrl: string | null;
+  photoUrl?: string | null;
   gender: string | null;
   dateOfBirth: string | null;
   wat: string | null;
@@ -158,11 +164,7 @@ export default function StudentsCardClient({ initialStudents, courses, userRole 
                 <div className={`${cardStyles.hero} ${complete ? cardStyles.heroComplete : cardStyles.heroIncomplete}`}>
                   <div className={cardStyles.heroIndex}>{(safePage - 1) * PAGE_SIZE + i + 1}</div>
                   <div className={cardStyles.avatarRing}>
-                    {student.photoUrl ? (
-                      <img src={student.photoUrl} alt="" className={cardStyles.avatar} />
-                    ) : (
-                      <div className={cardStyles.avatarFallback}>{student.name.charAt(0)}</div>
-                    )}
+                    <Avatar id={student.id} name={student.name} imgClass={cardStyles.avatar} fallbackClass={cardStyles.avatarFallback} />
                   </div>
                   {complete
                     ? <span className={cardStyles.statusBadgeOk}>✓ ពេញ</span>
@@ -241,11 +243,7 @@ export default function StudentsCardClient({ initialStudents, courses, userRole 
             <div className={`${styles.profileHero} ${isComplete(viewStudent) ? styles.profileHeroComplete : styles.profileHeroIncomplete}`}>
               <button className={styles.profileClose} onClick={() => setViewStudent(null)}>✕</button>
               <div className={styles.profileAvatarRing}>
-                {viewStudent.photoUrl ? (
-                  <img src={viewStudent.photoUrl} alt="" className={styles.profileAvatar} />
-                ) : (
-                  <div className={styles.profileAvatarFallback}>{viewStudent.name.charAt(0)}</div>
-                )}
+                <Avatar id={viewStudent.id} name={viewStudent.name} imgClass={styles.profileAvatar} fallbackClass={styles.profileAvatarFallback} />
               </div>
               <div className={styles.profileName}>{viewStudent.name}</div>
               <span className={styles.profileCode}>{viewStudent.studentCode}</span>

@@ -26,7 +26,7 @@ interface Student {
   id: string;
   studentCode: string;
   name: string;
-  photoUrl: string | null;
+  photoUrl?: string | null;
   phone: string | null;
   gender: string | null;
   dateOfBirth: string | null;
@@ -376,9 +376,12 @@ export default function ExportModal({ students, courses, onClose }: Props) {
                   {activeCols.map(c => (
                     <td key={c.key} style={{ border: '1px solid #333', padding: '6px 8px', textAlign: c.key === 'photo' ? 'center' : 'left', verticalAlign: 'middle', color: '#000691' }}>
                       {c.key === 'photo' ? (
-                        s.photoUrl ? (
-                          <img src={s.photoUrl} alt="profile" style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 4, display: 'block', margin: '0 auto' }} />
-                        ) : '—'
+                        <img 
+                          src={`/api/students/${s.id}/photo`} 
+                          alt="profile" 
+                          style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 4, display: 'block', margin: '0 auto' }} 
+                          onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                        />
                       ) : (
                         cellValue(s, c.key, i, courses)
                       )}

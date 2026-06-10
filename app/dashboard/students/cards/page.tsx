@@ -10,7 +10,9 @@ export default async function StudentsCardsPage() {
   if (!session) redirect('/');
 
   const students = await prisma.student.findMany({
+    take: 1000,
     orderBy: { createdAt: 'desc' },
+    omit: { photoUrl: true },
     include: {
       _count: { select: { enrollments: true } },
       enrollments: { select: { courseId: true } },

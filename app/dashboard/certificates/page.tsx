@@ -14,7 +14,7 @@ export default async function CertificatesPage() {
       include: { 
         student: { 
           select: { 
-            id: true, studentCode: true, name: true, nameEn: true, photoUrl: true, gender: true, dateOfBirth: true, grade: true,
+            id: true, studentCode: true, name: true, nameEn: true, gender: true, dateOfBirth: true, grade: true,
             enrollments: { include: { course: true } },
             results: { include: { exam: { include: { course: true, questions: { select: { points: true } } } } }, orderBy: { createdAt: 'desc' } },
             examParticipations: { include: { session: { include: { exam: { include: { course: true, questions: { select: { points: true } } } } } } }, orderBy: { createdAt: 'desc' } }
@@ -22,7 +22,7 @@ export default async function CertificatesPage() {
         } 
       },
     }),
-    prisma.student.findMany({ take: 1000, orderBy: { name: 'asc' }, select: { id: true, studentCode: true, name: true, nameEn: true, photoUrl: true, gender: true, dateOfBirth: true } }),
+    prisma.student.findMany({ take: 1000, orderBy: { name: 'asc' }, select: { id: true, studentCode: true, name: true, nameEn: true, gender: true, dateOfBirth: true } }),
   ]);
 
   return (

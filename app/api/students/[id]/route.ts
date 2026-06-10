@@ -23,7 +23,7 @@ export async function PUT(request: Request, { params }: RouteContext) {
         name: name.trim(),
         nameEn: nameEn?.trim() || null,
         phone: phone?.trim() || null,
-        photoUrl: photoUrl?.trim() || null,
+        ...(photoUrl !== undefined && { photoUrl: photoUrl?.trim() || null }),
         gender: gender?.trim() || null,
         dateOfBirth: dateOfBirth?.trim() || null,
         nationality: nationality?.trim() || null,

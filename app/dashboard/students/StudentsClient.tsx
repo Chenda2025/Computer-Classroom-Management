@@ -7,6 +7,12 @@ import Link from 'next/link';
 import styles from './students.module.css';
 import ExportModal from './ExportModal';
 
+const Avatar = ({ id, name, imgClass, fallbackClass, style }: { id: string, name: string, imgClass: string, fallbackClass: string, style?: any }) => {
+  const [error, setError] = useState(false);
+  if (error) return <div className={fallbackClass} style={style}>{name.charAt(0)}</div>;
+  return <img src={`/api/students/${id}/photo`} alt={name} className={imgClass} style={style} onError={() => setError(true)} />;
+};
+
 const selectStyles = {
   control: (base: any, state: any) => ({
     ...base,
@@ -53,7 +59,7 @@ interface Student {
   name: string;
   nameEn: string | null;
   phone: string | null;
-  photoUrl: string | null;
+  photoUrl?: string | null;
   gender: string | null;
   dateOfBirth: string | null;
   nationality: string | null;
@@ -85,7 +91,7 @@ type Tab = 'basic' | 'residence' | 'bio';
 const EMPTY_ADD = { name: '', nameEn: '', phone: '' };
 
 const EMPTY_FULL = {
-  name: '', nameEn: '', phone: '', photoUrl: '',
+  name: '', nameEn: '', phone: '', photoUrl: undefined as string | undefined,
   gender: '', dateOfBirth: '', nationality: '',
   wat: '', kuti: '', kutiFloor: '', kutiHead: '', kutiNumber: '',
   parentName: '', parentPhone: '',
@@ -409,7 +415,7 @@ export default function StudentsClient({ initialStudents, userRole, userPerms }:
       name: s.name,
       nameEn: s.nameEn ?? '',
       phone: s.phone ?? '',
-      photoUrl: s.photoUrl ?? '',
+      photoUrl: undefined,
       gender: s.gender ?? '',
       dateOfBirth: s.dateOfBirth ?? '',
       nationality: s.nationality ?? '',
@@ -622,11 +628,7 @@ export default function StudentsClient({ initialStudents, userRole, userPerms }:
                     />
                   )}
                   <div className={styles.cardAvatarWrap}>
-                    {student.photoUrl ? (
-                      <img src={student.photoUrl} alt="" className={styles.cardAvatar} />
-                    ) : (
-                      <div className={styles.cardAvatarFallback}>{student.name.charAt(0)}</div>
-                    )}
+                    <Avatar id={student.id} name={student.name} imgClass={styles.cardAvatar} fallbackClass={styles.cardAvatarFallback} />
                   </div>
                 </div>
                 <div className={styles.cardBody}>
@@ -702,13 +704,7 @@ export default function StudentsClient({ initialStudents, userRole, userPerms }:
                     <td><span className={styles.codeBadge}>{student.studentCode}</span></td>
                     <td className={styles.nameCell}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        {student.photoUrl ? (
-                          <img src={student.photoUrl} alt="" className={styles.avatar} />
-                        ) : (
-                          <div className={styles.avatarPlaceholder}>
-                            {student.name.charAt(0)}
-                          </div>
-                        )}
+                        <Avatar id={student.id} name={student.name} imgClass={styles.avatar} fallbackClass={styles.avatarPlaceholder} />
                         {student.name}
                       </div>
                     </td>
@@ -918,10 +914,14 @@ export default function StudentsClient({ initialStudents, userRole, userPerms }:
                 <div className={styles.tabPanel}>
                   <div className={styles.formGroup} style={{ alignSelf: 'center', marginBottom: '8px' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
-                      {editForm.photoUrl ? (
-                        <img src={editForm.photoUrl} alt="Student" className={styles.avatarLarge} />
+                      {editForm.photoUrl !== undefined ? (
+                        editForm.photoUrl ? (
+                          <img src={editForm.photoUrl} alt="Student" className={styles.avatarLarge} />
+                        ) : (
+                          <div className={styles.avatarLargePlaceholder}>រូប</div>
+                        )
                       ) : (
-                        <div className={styles.avatarLargePlaceholder}>រូប</div>
+                        <Avatar id={editingId!} name={editForm.name} imgClass={styles.avatarLarge} fallbackClass={styles.avatarLargePlaceholder} />
                       )}
                       <div>
                         <input type="file" accept="image/*" id="photo-upload" style={{ display: 'none' }} onChange={handleUpload} disabled={uploading} />
@@ -1291,6 +1291,7 @@ export default function StudentsClient({ initialStudents, userRole, userPerms }:
 
                     {manageForm.grades.map((g, idx) => (
                       <div key={idx} style={{ display: 'flex', gap: '8px', marginBottom: '10px' }}>
+
                         <input className={styles.input}
                           style={{ padding: '12px 16px', fontSize: '1rem', borderRadius: '10px', flex: 1, color: '#1e293b', background: '#f8fafc', border: '1px solid #cbd5e1' }}
                           value={g.name}
@@ -1351,11 +1352,7 @@ export default function StudentsClient({ initialStudents, userRole, userPerms }:
                 <button className={styles.profileClose} style={{ position: 'static' }} onClick={() => setViewStudent(null)}>✕</button>
               </div>
               <div className={styles.profileAvatarRing}>
-                {viewStudent.photoUrl ? (
-                  <img src={viewStudent.photoUrl} alt="" className={styles.profileAvatar} />
-                ) : (
-                  <div className={styles.profileAvatarFallback}>{viewStudent.name.charAt(0)}</div>
-                )}
+                <Avatar id={viewStudent.id} name={viewStudent.name} imgClass={styles.profileAvatar} fallbackClass={styles.profileAvatarFallback} />
               </div>
               <div className={styles.profileName}>{viewStudent.name}</div>
               <span className={styles.profileCode}>{viewStudent.studentCode}</span>

@@ -1,5 +1,5 @@
 'use client';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { parsePermissions, canInsert, canWrite, canDelete } from '../../../lib/permissions';
 import styles from '../students/students.module.css';
 import tc from './teachers.module.css';
@@ -15,7 +15,7 @@ interface Teacher {
   dateOfBirth: string | null;
   nationality: string | null;
   subject: string | null;
-  photoUrl: string | null;
+  photoUrl?: string | null;
   notes: string | null;
   createdAt: string;
   updatedAt: string;
@@ -91,6 +91,20 @@ export default function TeachersClient({ initialTeachers, courses, userRole, use
   const PAGE_SIZE = 15;
   const [page, setPage] = useState(1);
 
+  // View mode — persisted in localStorage
+  const [viewMode, setViewMode] = useState<'table' | 'card'>('card');
+  useEffect(() => {
+    const saved = localStorage.getItem('teacherViewMode') as 'table' | 'card' | null;
+    if (saved === 'card' || saved === 'table') setViewMode(saved);
+  }, []);
+  const switchViewMode = (mode: 'table' | 'card') => {
+    setViewMode(mode);
+    localStorage.setItem('teacherViewMode', mode);
+  };
+
+  const formatDate = (iso: string) =>
+    new Date(iso).toLocaleDateString('km-KH', { year: 'numeric', month: 'short', day: 'numeric' });
+
   const genderOptions = useMemo(
     () => Array.from(new Set(teachers.map(t => t.gender).filter(Boolean) as string[])),
     [teachers]
@@ -129,6 +143,16 @@ export default function TeachersClient({ initialTeachers, courses, userRole, use
 
   const toggleSelect = (id: string) =>
     setSelectedIds(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+
+  const allPageSelected = paginated.length > 0 && paginated.every(t => selectedIds.has(t.id));
+  const somePageSelected = paginated.some(t => selectedIds.has(t.id));
+  const toggleSelectAll = () => {
+    if (allPageSelected) {
+      setSelectedIds(prev => { const n = new Set(prev); paginated.forEach(t => n.delete(t.id)); return n; });
+    } else {
+      setSelectedIds(prev => { const n = new Set(prev); paginated.forEach(t => n.add(t.id)); return n; });
+    }
+  };
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -332,6 +356,23 @@ export default function TeachersClient({ initialTeachers, courses, userRole, use
         {(search || filterSubject || filterGender) && (
           <span className={styles.resultCount}>{filtered.length} / {teachers.length} នាក់</span>
         )}
+
+        <div className={styles.viewToggle}>
+          <button
+            className={`${styles.viewToggleBtn} ${viewMode === 'table' ? styles.viewToggleActive : ''}`}
+            onClick={() => switchViewMode('table')}
+            title="មើលជាតារាង"
+          >
+            ☰
+          </button>
+          <button
+            className={`${styles.viewToggleBtn} ${viewMode === 'card' ? styles.viewToggleActive : ''}`}
+            onClick={() => switchViewMode('card')}
+            title="មើលជាកាត"
+          >
+            ⊞
+          </button>
+        </div>
       </div>
 
       {/* ── Empty state ── */}
@@ -346,7 +387,7 @@ export default function TeachersClient({ initialTeachers, courses, userRole, use
       )}
 
       {/* ── Card grid ── */}
-      {paginated.length > 0 && (
+      {paginated.length > 0 && viewMode === 'card' && (
         <div className={tc.grid}>
           {paginated.map((t, i) => {
             const color = t.gender === 'M' ? '#4f46e5' : t.gender === 'F' ? '#db2777' : '#475569';
@@ -425,6 +466,104 @@ export default function TeachersClient({ initialTeachers, courses, userRole, use
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* ── Table view ── */}
+      {paginated.length > 0 && viewMode === 'table' && (
+        <div className={styles.tableWrapper}>
+          <table className={styles.table}>
+            <thead className={styles.thead}>
+              <tr>
+                {canDel && (
+                  <th className={styles.checkCell}>
+                    <input
+                      type="checkbox"
+                      className={styles.checkbox}
+                      checked={allPageSelected}
+                      ref={el => { if (el) el.indeterminate = somePageSelected && !allPageSelected; }}
+                      onChange={toggleSelectAll}
+                    />
+                  </th>
+                )}
+                <th>#</th>
+                <th>លេខកូដ</th>
+                <th>ឈ្មោះគ្រូ</th>
+                <th>ភេទ</th>
+                <th>លេខទូរស័ព្ទ</th>
+                <th>មុខវិជ្ជា</th>
+                <th>ថ្ងៃខែឆ្នាំកំណើត</th>
+                <th>កាលបរិច្ឆេទ</th>
+                <th></th>
+                {(canWri || canDel) && <th>ការគ្រប់គ្រង</th>}
+              </tr>
+            </thead>
+            <tbody>
+              {paginated.map((t, i) => (
+                <tr key={t.id} className={`${styles.row} ${selectedIds.has(t.id) ? styles.rowSelected : ''}`}>
+                  {canDel && (
+                    <td className={styles.checkCell}>
+                      <input
+                        type="checkbox"
+                        className={styles.checkbox}
+                        checked={selectedIds.has(t.id)}
+                        onChange={() => toggleSelect(t.id)}
+                      />
+                    </td>
+                  )}
+                  <td className={styles.indexCell}>{(safePage - 1) * PAGE_SIZE + i + 1}</td>
+                  <td><span className={styles.codeBadge}>{t.teacherCode}</span></td>
+                  <td className={styles.nameCell}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      {(t as any).photoUrl
+                        ? <img src={(t as any).photoUrl} alt="" className={styles.avatar} />
+                        : <div className={styles.avatarPlaceholder}>{t.name.charAt(0)}</div>}
+                      {t.name}
+                    </div>
+                  </td>
+                  <td className={styles.mutedCell}>
+                    {t.gender === 'M' ? 'ប្រុស' : t.gender === 'F' ? 'ស្រី' : '—'}
+                  </td>
+                  <td className={styles.mutedCell}>{t.phone ?? '—'}</td>
+                  <td>
+                    {!t.subject ? '—' : (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                        {t.subject.split(',').map(sub => {
+                          const sName = sub.trim();
+                          if (!sName) return null;
+                          const sColor = subjectColor(sName);
+                          return (
+                            <span key={sName} style={{ background: sColor, color: '#fff', fontSize: '0.72rem', padding: '2px 8px', borderRadius: '12px', fontWeight: 500 }}>
+                              {sName}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </td>
+                  <td className={styles.mutedCell}>{t.dateOfBirth ?? '—'}</td>
+                  <td className={styles.mutedCell}>{formatDate(t.createdAt)}</td>
+                  <td>
+                    <button
+                      className={`${styles.actionBtn} ${styles.viewBtn}`}
+                      onClick={() => setInfoTeacher(t)}
+                      title="ព័ត៌មានលម្អិត"
+                    >
+                      👁️
+                    </button>
+                  </td>
+                  {(canWri || canDel) && (
+                    <td>
+                      <div className={styles.actionGroup}>
+                        {canWri && <button className={`${styles.actionBtn} ${styles.editBtn}`} onClick={() => openEdit(t)} title="កែប្រែ">✏️</button>}
+                        {canDel && <button className={`${styles.actionBtn} ${styles.deleteBtn}`} onClick={() => setDeleteTarget(t.id)} title="លុប">🗑️</button>}
+                      </div>
+                    </td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
 

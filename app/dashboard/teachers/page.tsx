@@ -8,7 +8,7 @@ export default async function TeachersPage() {
   if (!session) redirect('/');
 
   const [teachers, courses] = await Promise.all([
-    prisma.teacher.findMany({ orderBy: { createdAt: 'desc' } }),
+    prisma.teacher.findMany({ take: 1000, orderBy: { createdAt: 'desc' }, omit: { photoUrl: true } }),
     prisma.course.findMany({ orderBy: { name: 'asc' }, select: { id: true, name: true } }),
   ]);
 

@@ -24,7 +24,7 @@ export async function PUT(request: Request, { params }: RouteContext) {
         dateOfBirth: dateOfBirth?.trim() || null,
         nationality: nationality?.trim() || null,
         subject: subject?.trim() || null,
-        photoUrl: photoUrl?.trim() || null,
+        ...(photoUrl !== undefined && { photoUrl: photoUrl?.trim() || null }),
         notes: notes?.trim() || null,
       },
     });
