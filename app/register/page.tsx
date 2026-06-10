@@ -2,16 +2,19 @@
 
 import { useEffect, useState } from 'react';
 import Select from 'react-select';
+import CreatableSelect from 'react-select/creatable';
 import styles from './register.module.css';
+
+const NATIONALITY_OPTIONS = [
+  'ខ្មែរ', 'វៀតណាម', 'ចិន', 'ថៃ', 'ឡាវ', 'ភូមា', 'ហ្វីលីពីន', 'ឥណ្ឌូនេស៊ី', 'ម៉ាឡេស៊ី', 'ឥណ្ឌា',
+].map(n => ({ value: n, label: n }));
 
 const EMPTY = {
   name: '', nameEn: '', phone: '', photoUrl: undefined as string | undefined,
   gender: '', dateOfBirth: '', nationality: '',
   wat: '', kuti: '', kutiHead: '',
-  parentName: '', parentPhone: '',
   academicYear: `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`,
   educationLevel: '', grade: '',
-  notes: '',
 };
 
 const selectStyles = {
@@ -27,6 +30,17 @@ const selectStyles = {
   }),
   menu: (base: any) => ({ ...base, zIndex: 20 }),
   menuPortal: (base: any) => ({ ...base, zIndex: 9999 }),
+  singleValue: (base: any) => ({ ...base, color: '#000' }),
+  input: (base: any) => ({ ...base, color: '#000' }),
+  option: (base: any, state: any) => ({
+    ...base,
+    backgroundColor: state.isFocused
+      ? 'var(--color-accent)'
+      : state.isSelected
+        ? 'var(--color-accent-light)'
+        : 'transparent',
+    color: state.isFocused ? '#fff' : '#000',
+  }),
 };
 
 export default function RegisterPage() {
@@ -120,7 +134,7 @@ export default function RegisterPage() {
     <div className={styles.wrapper}>
       <div className={styles.card}>
         <div className={styles.header}>
-          <div className={styles.icon}>📝</div>
+          <img src="/school-emblem.jpg" alt="School emblem" className={styles.icon} />
           <h1 className={styles.title}>ទម្រង់ចុះឈ្មោះសិស្សថ្មី</h1>
           <p className={styles.subtitle}>
             សូមបំពេញព័ត៌មានខាងក្រោម។ ព័ត៌មានរបស់អ្នកនឹងត្រូវបានពិនិត្យ និងអនុម័តដោយអ្នកគ្រប់គ្រងប្រព័ន្ធ។
@@ -154,8 +168,8 @@ export default function RegisterPage() {
                   value={form.name} onChange={e => set('name', e.target.value)} />
               </div>
               <div className={styles.field}>
-                <label className={styles.label}>ឈ្មោះឡាតាំង</label>
-                <input className={styles.input}
+                <label className={styles.label}>ឈ្មោះឡាតាំង *</label>
+                <input className={styles.input} required
                   placeholder="ឈ្មោះជាអក្សរអង់គ្លេស"
                   value={form.nameEn} onChange={e => set('nameEn', e.target.value)} />
               </div>
@@ -163,32 +177,42 @@ export default function RegisterPage() {
 
             <div className={styles.row}>
               <div className={styles.field}>
-                <label className={styles.label}>ភេទ</label>
-                <select className={styles.select} value={form.gender} onChange={e => set('gender', e.target.value)}>
+                <label className={styles.label}>ភេទ *</label>
+                <select className={styles.select} required value={form.gender} onChange={e => set('gender', e.target.value)}>
                   <option value="">-- ជ្រើសរើស --</option>
                   <option value="M">ប្រុស</option>
                   <option value="F">ស្រី</option>
                 </select>
               </div>
               <div className={styles.field}>
-                <label className={styles.label}>ថ្ងៃខែឆ្នាំកំណើត</label>
-                <input type="date" className={styles.input}
+                <label className={styles.label}>ថ្ងៃខែឆ្នាំកំណើត *</label>
+                <input type="date" className={styles.input} required
                   value={form.dateOfBirth} onChange={e => set('dateOfBirth', e.target.value)} />
               </div>
             </div>
 
             <div className={styles.row}>
               <div className={styles.field}>
-                <label className={styles.label}>លេខទូរស័ព្ទ</label>
-                <input type="tel" className={styles.input}
+                <label className={styles.label}>លេខទូរស័ព្ទ *</label>
+                <input type="tel" className={styles.input} required
                   placeholder="012 345 678"
                   value={form.phone} onChange={e => set('phone', e.target.value)} />
               </div>
               <div className={styles.field}>
-                <label className={styles.label}>សញ្ជាតិ</label>
-                <input className={styles.input}
-                  placeholder="ខ្មែរ"
-                  value={form.nationality} onChange={e => set('nationality', e.target.value)} />
+                <label className={styles.label}>សញ្ជាតិ *</label>
+                <CreatableSelect
+                  instanceId="nationality"
+                  required
+                  styles={selectStyles}
+                  menuPortalTarget={typeof document !== 'undefined' ? document.body : null}
+                  menuPosition="fixed"
+                  placeholder="-- ជ្រើសរើស ឬ វាយបញ្ចូល --"
+                  formatCreateLabel={(input: string) => `+ បន្ថែម "${input}"`}
+                  options={NATIONALITY_OPTIONS}
+                  value={form.nationality ? { value: form.nationality, label: form.nationality } : null}
+                  onChange={(opt: any) => set('nationality', opt?.value || '')}
+                  isClearable
+                />
               </div>
             </div>
           </div>
@@ -199,8 +223,10 @@ export default function RegisterPage() {
 
             <div className={styles.row}>
               <div className={styles.field}>
-                <label className={styles.label}>វត្ត</label>
+                <label className={styles.label}>វត្ត *</label>
                 <Select
+                  instanceId="wat"
+                  required
                   styles={selectStyles}
                   menuPortalTarget={typeof document !== 'undefined' ? document.body : null}
                   menuPosition="fixed"
@@ -212,8 +238,10 @@ export default function RegisterPage() {
                 />
               </div>
               <div className={styles.field}>
-                <label className={styles.label}>កុដិ</label>
+                <label className={styles.label}>កុដិ *</label>
                 <Select
+                  instanceId="kuti"
+                  required
                   styles={selectStyles}
                   menuPortalTarget={typeof document !== 'undefined' ? document.body : null}
                   menuPosition="fixed"
@@ -230,23 +258,12 @@ export default function RegisterPage() {
                 />
               </div>
             </div>
-          </div>
 
-          {/* ── Family ── */}
-          <div className={styles.section}>
-            <div className={styles.sectionTitle}>ព័ត៌មានគ្រួសារ</div>
-
-            <div className={styles.row}>
-              <div className={styles.field}>
-                <label className={styles.label}>ឈ្មោះឳពុកម្តាយ/អាណាព្យាបាល</label>
-                <input className={styles.input}
-                  value={form.parentName} onChange={e => set('parentName', e.target.value)} />
-              </div>
-              <div className={styles.field}>
-                <label className={styles.label}>លេខទូរស័ព្ទឳពុកម្តាយ/អាណាព្យាបាល</label>
-                <input type="tel" className={styles.input}
-                  value={form.parentPhone} onChange={e => set('parentPhone', e.target.value)} />
-              </div>
+            <div className={styles.field}>
+              <label className={styles.label}>មេកុដិឈ្មោះ</label>
+              <input className={styles.input} disabled
+                style={{ opacity: 0.8, cursor: 'not-allowed' }}
+                value={form.kutiHead} />
             </div>
           </div>
 
@@ -262,8 +279,10 @@ export default function RegisterPage() {
                   value={form.academicYear} />
               </div>
               <div className={styles.field}>
-                <label className={styles.label}>កម្រិតសិក្សា</label>
+                <label className={styles.label}>កម្រិតសិក្សា *</label>
                 <Select
+                  instanceId="education-level"
+                  required
                   styles={selectStyles}
                   menuPortalTarget={typeof document !== 'undefined' ? document.body : null}
                   menuPosition="fixed"
@@ -278,8 +297,10 @@ export default function RegisterPage() {
 
             <div className={styles.row}>
               <div className={styles.field}>
-                <label className={styles.label}>ថ្នាក់ទី</label>
+                <label className={styles.label}>ថ្នាក់ទី *</label>
                 <Select
+                  instanceId="grade"
+                  required
                   styles={selectStyles}
                   menuPortalTarget={typeof document !== 'undefined' ? document.body : null}
                   menuPosition="fixed"
@@ -291,12 +312,6 @@ export default function RegisterPage() {
                   isClearable
                 />
               </div>
-            </div>
-
-            <div className={styles.field}>
-              <label className={styles.label}>កំណត់ចំណាំ</label>
-              <textarea className={styles.textarea}
-                value={form.notes} onChange={e => set('notes', e.target.value)} />
             </div>
           </div>
 

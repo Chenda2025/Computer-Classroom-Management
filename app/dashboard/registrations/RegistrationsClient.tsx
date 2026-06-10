@@ -63,8 +63,18 @@ export default function RegistrationsClient({ initialRegistrations, userRole, us
 
   const pendingCount = useMemo(() => registrations.filter(r => r.status === 'PENDING').length, [registrations]);
 
-  const formatDate = (iso: string) =>
-    new Date(iso).toLocaleDateString('km-KH', { year: 'numeric', month: 'short', day: 'numeric' });
+  const tabCounts = useMemo(() => ({
+    PENDING: registrations.filter(r => r.status === 'PENDING').length,
+    APPROVED: registrations.filter(r => r.status === 'APPROVED').length,
+    REJECTED: registrations.filter(r => r.status === 'REJECTED').length,
+    ALL: registrations.length,
+  } as Record<string, number>), [registrations]);
+
+  const KHMER_MONTHS = ['មករា', 'កុម្ភៈ', 'មីនា', 'មេសា', 'ឧសភា', 'មិថុនា', 'កក្កដា', 'សីហា', 'កញ្ញា', 'តុលា', 'វិច្ឆិកា', 'ធ្នូ'];
+  const formatDate = (iso: string) => {
+    const d = new Date(iso);
+    return `${d.getDate()} ${KHMER_MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+  };
 
   const copyLink = async () => {
     const url = `${window.location.origin}/register`;
@@ -128,26 +138,57 @@ export default function RegistrationsClient({ initialRegistrations, userRole, us
 
       {/* ── Tabs ── */}
       <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
-        {TABS.map(t => (
-          <button
-            key={t.key}
-            type="button"
-            onClick={() => setTab(t.key)}
-            style={{
-              padding: '8px 18px',
-              borderRadius: 999,
-              border: '1px solid var(--color-border)',
-              background: tab === t.key ? 'var(--color-accent)' : 'var(--color-surface)',
-              color: tab === t.key ? '#fff' : 'var(--color-text-secondary)',
-              fontWeight: 700,
-              fontSize: '0.85rem',
-              cursor: 'pointer',
-            }}
-          >
-            {t.label}
-            {t.key === 'PENDING' && pendingCount > 0 ? ` (${pendingCount})` : ''}
-          </button>
-        ))}
+        {TABS.map(t => {
+          const active = tab === t.key;
+          const count = tabCounts[t.key] ?? 0;
+          return (
+            <button
+              key={t.key}
+              type="button"
+              onClick={() => setTab(t.key)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                padding: '8px 18px',
+                borderRadius: 999,
+                border: '1px solid var(--color-border)',
+                background: active ? 'var(--color-accent)' : 'var(--color-surface)',
+                color: active ? '#fff' : 'var(--color-text-secondary)',
+                fontWeight: 700,
+                fontSize: '0.85rem',
+                cursor: 'pointer',
+              }}
+            >
+              {t.label}
+              {count > 0 && (
+                <span
+                  style={{
+                    background: active
+                      ? 'rgba(255, 255, 255, 0.28)'
+                      : t.key === 'PENDING'
+                        ? '#ef4444'
+                        : 'var(--color-accent-light)',
+                    color: active
+                      ? '#fff'
+                      : t.key === 'PENDING'
+                        ? '#fff'
+                        : 'var(--color-accent-hover)',
+                    fontSize: '0.7rem',
+                    fontWeight: 800,
+                    padding: '1px 7px',
+                    borderRadius: 999,
+                    minWidth: 18,
+                    textAlign: 'center',
+                    lineHeight: '1.4',
+                  }}
+                >
+                  {count}
+                </span>
+              )}
+            </button>
+          );
+        })}
       </div>
 
       {/* ── Table ── */}
@@ -222,43 +263,134 @@ export default function RegistrationsClient({ initialRegistrations, userRole, us
       </div>
 
       {/* ── View Modal ── */}
-      {viewing && (
-        <div className={styles.modalOverlay} onClick={() => setViewing(null)}>
-          <div className="glass-panel" onClick={e => e.stopPropagation()} style={{ maxWidth: 480, width: '92%', padding: 28, borderRadius: 16 }}>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-              {viewing.photoUrl ? (
-                <img src={viewing.photoUrl} alt={viewing.name} className={styles.avatarLarge} />
-              ) : (
-                <div className={styles.avatarLargePlaceholder}>{viewing.name.charAt(0)}</div>
-              )}
-              <h3 style={{ margin: 0 }}>{viewing.name}</h3>
-              {viewing.nameEn && <span style={{ color: 'var(--color-text-secondary)' }}>{viewing.nameEn}</span>}
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, fontSize: '0.88rem' }}>
-              <div><strong>ភេទ:</strong> {viewing.gender === 'M' ? 'ប្រុស' : viewing.gender === 'F' ? 'ស្រី' : '—'}</div>
-              <div><strong>ថ្ងៃកំណើត:</strong> {viewing.dateOfBirth || '—'}</div>
-              <div><strong>លេខទូរស័ព្ទ:</strong> {viewing.phone || '—'}</div>
-              <div><strong>សញ្ជាតិ:</strong> {viewing.nationality || '—'}</div>
-              <div><strong>វត្ត:</strong> {viewing.wat || '—'}</div>
-              <div><strong>កុដិ:</strong> {viewing.kuti || '—'}</div>
-              <div><strong>មេកុដិ:</strong> {viewing.kutiHead || '—'}</div>
-              <div><strong>ឆ្នាំសិក្សា:</strong> {viewing.academicYear || '—'}</div>
-              <div><strong>កម្រិតសិក្សា:</strong> {viewing.educationLevel || '—'}</div>
-              <div><strong>ថ្នាក់ទី:</strong> {viewing.grade || '—'}</div>
-              <div><strong>ឈ្មោះអាណាព្យាបាល:</strong> {viewing.parentName || '—'}</div>
-              <div><strong>ទូរស័ព្ទអាណាព្យាបាល:</strong> {viewing.parentPhone || '—'}</div>
-            </div>
-            {viewing.notes && (
-              <div style={{ marginTop: 12, fontSize: '0.88rem' }}>
-                <strong>កំណត់ចំណាំ:</strong> {viewing.notes}
+      {viewing && (() => {
+        const st = STATUS_STYLE[viewing.status] || STATUS_STYLE.PENDING;
+        const color = viewing.gender === 'M' ? '#4f46e5' : viewing.gender === 'F' ? '#db2777' : '#475569';
+        const colorLight = viewing.gender === 'M' ? '#818cf8' : viewing.gender === 'F' ? '#f472b6' : '#94a3b8';
+        return (
+          <div className={styles.modalOverlay} onClick={() => setViewing(null)}>
+            <div className={styles.infoModal} onClick={e => e.stopPropagation()}>
+              <div className={styles.infoBanner} style={{ background: `linear-gradient(135deg, ${color}, ${colorLight})` }}>
+                <div className={styles.infoBannerAvatar}>
+                  {viewing.photoUrl
+                    ? <img src={viewing.photoUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    : <span style={{ color }}>{viewing.name.charAt(0)}</span>}
+                </div>
+                <div className={styles.infoBannerText}>
+                  <div className={styles.infoBannerName}>{viewing.name}</div>
+                  {viewing.nameEn && <div className={styles.infoBannerSub}>{viewing.nameEn}</div>}
+                  <span className={styles.infoBannerBadge} style={{ color: st.color }}>{st.label}</span>
+                </div>
+                <button className={styles.infoBannerClose} onClick={() => setViewing(null)}>✕</button>
               </div>
-            )}
-            <div className={styles.formActions} style={{ marginTop: 20 }}>
-              <button className={styles.cancelBtn} onClick={() => setViewing(null)}>បិទ</button>
+
+              <div className={styles.infoBody}>
+                <div className={styles.infoSection}>
+                  <div className={styles.infoSectionTitle}>ព័ត៌មានទូទៅ</div>
+                  <div className={styles.infoGrid}>
+                    <div className={styles.infoItem}>
+                      <div className={styles.infoItemLabel}>👤 ភេទ</div>
+                      <div className={styles.infoItemValue}>{viewing.gender === 'M' ? 'ប្រុស' : viewing.gender === 'F' ? 'ស្រី' : '—'}</div>
+                    </div>
+                    <div className={styles.infoItem}>
+                      <div className={styles.infoItemLabel}>🗓 ថ្ងៃខែឆ្នាំកំណើត</div>
+                      <div className={styles.infoItemValue}>{viewing.dateOfBirth || '—'}</div>
+                    </div>
+                    <div className={styles.infoItem}>
+                      <div className={styles.infoItemLabel}>📱 ទូរស័ព្ទ</div>
+                      <div className={styles.infoItemValue}>{viewing.phone || '—'}</div>
+                    </div>
+                    <div className={styles.infoItem}>
+                      <div className={styles.infoItemLabel}>🌏 សញ្ជាតិ</div>
+                      <div className={styles.infoItemValue}>{viewing.nationality || '—'}</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className={styles.infoSection}>
+                  <div className={styles.infoSectionTitle}>ទីតាំងស្នាក់នៅ</div>
+                  <div className={styles.infoGrid}>
+                    <div className={styles.infoItem}>
+                      <div className={styles.infoItemLabel}>🛕 វត្ត</div>
+                      <div className={styles.infoItemValue}>{viewing.wat || '—'}</div>
+                    </div>
+                    <div className={styles.infoItem}>
+                      <div className={styles.infoItemLabel}>🏠 កុដិ</div>
+                      <div className={styles.infoItemValue}>{viewing.kuti || '—'}</div>
+                    </div>
+                    <div className={styles.infoItem} style={{ gridColumn: '1 / -1' }}>
+                      <div className={styles.infoItemLabel}>🧑‍🦱 មេកុដិ</div>
+                      <div className={styles.infoItemValue}>{viewing.kutiHead || '—'}</div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className={styles.infoSection}>
+                  <div className={styles.infoSectionTitle}>ព័ត៌មានសិក្សា</div>
+                  <div className={styles.infoGrid}>
+                    <div className={styles.infoItem}>
+                      <div className={styles.infoItemLabel}>📅 ឆ្នាំសិក្សា</div>
+                      <div className={styles.infoItemValue}>{viewing.academicYear || '—'}</div>
+                    </div>
+                    <div className={styles.infoItem}>
+                      <div className={styles.infoItemLabel}>🎓 កម្រិតសិក្សា</div>
+                      <div className={styles.infoItemValue}>{viewing.educationLevel || '—'}</div>
+                    </div>
+                    <div className={styles.infoItem} style={{ gridColumn: '1 / -1' }}>
+                      <div className={styles.infoItemLabel}>📘 ថ្នាក់ទី</div>
+                      <div className={styles.infoItemValue}>{viewing.grade || '—'}</div>
+                    </div>
+                  </div>
+                </div>
+
+                {(viewing.parentName || viewing.parentPhone) && (
+                  <div className={styles.infoSection}>
+                    <div className={styles.infoSectionTitle}>ព័ត៌មានគ្រួសារ</div>
+                    <div className={styles.infoGrid}>
+                      <div className={styles.infoItem}>
+                        <div className={styles.infoItemLabel}>👪 ឈ្មោះអាណាព្យាបាល</div>
+                        <div className={styles.infoItemValue}>{viewing.parentName || '—'}</div>
+                      </div>
+                      <div className={styles.infoItem}>
+                        <div className={styles.infoItemLabel}>📞 ទូរស័ព្ទអាណាព្យាបាល</div>
+                        <div className={styles.infoItemValue}>{viewing.parentPhone || '—'}</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {viewing.notes && (
+                  <div className={styles.infoSection}>
+                    <div className={styles.infoSectionTitle}>កំណត់ចំណាំ</div>
+                    <div className={styles.infoItem}>
+                      <div className={styles.infoItemValue} style={{ fontWeight: 500 }}>{viewing.notes}</div>
+                    </div>
+                  </div>
+                )}
+
+                <div className={styles.infoSection}>
+                  <div className={styles.infoSectionTitle}>កាលបរិច្ឆេទស្នើសុំ</div>
+                  <div className={styles.infoItem}>
+                    <div className={styles.infoItemValue}>{formatDate(viewing.createdAt)}</div>
+                  </div>
+                </div>
+              </div>
+
+              <div className={styles.infoFooter}>
+                {viewing.status === 'PENDING' && canWri && (
+                  <>
+                    <button className="btn-primary" disabled={busyId === viewing.id}
+                      onClick={() => { handleAction(viewing.id, 'APPROVE'); setViewing(null); }}>✅ អនុម័ត</button>
+                    <button className={styles.cancelBtn} disabled={busyId === viewing.id}
+                      onClick={() => { handleAction(viewing.id, 'REJECT'); setViewing(null); }}>❌ បដិសេធ</button>
+                  </>
+                )}
+                <button className={styles.cancelBtn} onClick={() => setViewing(null)}>បិទ</button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }
