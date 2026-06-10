@@ -1,0 +1,310 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import Select from 'react-select';
+import styles from './register.module.css';
+
+const EMPTY = {
+  name: '', nameEn: '', phone: '', photoUrl: undefined as string | undefined,
+  gender: '', dateOfBirth: '', nationality: '',
+  wat: '', kuti: '', kutiHead: '',
+  parentName: '', parentPhone: '',
+  academicYear: `${new Date().getFullYear()}-${new Date().getFullYear() + 1}`,
+  educationLevel: '', grade: '',
+  notes: '',
+};
+
+const selectStyles = {
+  control: (base: any, state: any) => ({
+    ...base,
+    background: state.isFocused ? '#ffffff' : '#f8fafc',
+    borderColor: state.isFocused ? 'var(--color-accent)' : 'var(--color-border)',
+    borderWidth: '1.5px',
+    boxShadow: state.isFocused ? '0 0 0 4px rgba(99, 102, 241, 0.12)' : 'none',
+    borderRadius: 'var(--radius-md)',
+    fontSize: '0.9rem',
+    minHeight: '44px',
+  }),
+  menu: (base: any) => ({ ...base, zIndex: 20 }),
+  menuPortal: (base: any) => ({ ...base, zIndex: 9999 }),
+};
+
+export default function RegisterPage() {
+  const [pagodas, setPagodas] = useState<any[]>([]);
+  const [kutis, setKutis] = useState<any[]>([]);
+  const [educationLevels, setEducationLevels] = useState<any[]>([]);
+
+  const [form, setForm] = useState(EMPTY);
+  const [uploading, setUploading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const [done, setDone] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/public/registration-meta')
+      .then(res => res.json())
+      .then(data => {
+        setPagodas(data.pagodas || []);
+        setKutis(data.kutis || []);
+        setEducationLevels(data.educationLevels || []);
+        if (data.academicYears?.[0]?.name) {
+          setForm(v => ({ ...v, academicYear: data.academicYears[0].name }));
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const set = (k: keyof typeof EMPTY, val: string) => setForm(v => ({ ...v, [k]: val }));
+
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await fetch('/api/public/upload', { method: 'POST', body: fd });
+      const data = await res.json();
+      if (res.ok) setForm(v => ({ ...v, photoUrl: data.url }));
+      else setError(data.error || 'មានបញ្ហាក្នុងការផ្ទុករូបភាព');
+    } finally {
+      setUploading(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setSubmitting(true);
+    try {
+      const res = await fetch('/api/public/registrations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      });
+      const data = await res.json();
+      if (!res.ok) { setError(data.error || 'មានបញ្ហាក្នុងការបញ្ជូនទម្រង់'); return; }
+      setDone(true);
+    } catch {
+      setError('មានបញ្ហាបច្ចេកទេសកើតឡើង។');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const watKutis = form.wat
+    ? kutis.filter(k => k.pagodaId === pagodas.find(p => p.name === form.wat)?.id)
+    : [];
+
+  const selectedLevel = educationLevels.find((l: any) => l.name === form.educationLevel);
+
+  if (done) {
+    return (
+      <div className={styles.wrapper}>
+        <div className={styles.card}>
+          <div className={styles.successWrap}>
+            <div className={styles.successIcon}>✓</div>
+            <h2 className={styles.successTitle}>បានទទួលសំណើចុះឈ្មោះ!</h2>
+            <p className={styles.successText}>
+              ព័ត៌មានរបស់អ្នកត្រូវបានបញ្ជូនដោយជោគជ័យ។<br />
+              សូមរង់ចាំការត្រួតពិនិត្យ និងអនុម័តពីអ្នកគ្រប់គ្រងប្រព័ន្ធ។
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={styles.wrapper}>
+      <div className={styles.card}>
+        <div className={styles.header}>
+          <div className={styles.icon}>📝</div>
+          <h1 className={styles.title}>ទម្រង់ចុះឈ្មោះសិស្សថ្មី</h1>
+          <p className={styles.subtitle}>
+            សូមបំពេញព័ត៌មានខាងក្រោម។ ព័ត៌មានរបស់អ្នកនឹងត្រូវបានពិនិត្យ និងអនុម័តដោយអ្នកគ្រប់គ្រងប្រព័ន្ធ។
+          </p>
+        </div>
+
+        <form className={styles.form} onSubmit={handleSubmit}>
+          {error && <div className={styles.error}>⚠ {error}</div>}
+
+          <div className={styles.photoRow}>
+            {form.photoUrl ? (
+              <img src={form.photoUrl} alt="Preview" className={styles.photoPreview} />
+            ) : (
+              <div className={styles.photoPlaceholder}>👤</div>
+            )}
+            <input type="file" accept="image/*" id="photo-upload" style={{ display: 'none' }} onChange={handleUpload} disabled={uploading} />
+            <label htmlFor="photo-upload" className={styles.uploadLabel}>
+              {uploading ? 'កំពុងផ្ទុក...' : 'ផ្ទុករូបភាព'}
+            </label>
+          </div>
+
+          {/* ── Basic info ── */}
+          <div className={styles.section}>
+            <div className={styles.sectionTitle}>ព័ត៌មានទូទៅ</div>
+
+            <div className={styles.row}>
+              <div className={styles.field}>
+                <label className={styles.label}>ឈ្មោះពេញ *</label>
+                <input className={styles.input} required autoFocus
+                  placeholder="ឈ្មោះ និងនាមត្រកូល (ខ្មែរ)"
+                  value={form.name} onChange={e => set('name', e.target.value)} />
+              </div>
+              <div className={styles.field}>
+                <label className={styles.label}>ឈ្មោះឡាតាំង</label>
+                <input className={styles.input}
+                  placeholder="ឈ្មោះជាអក្សរអង់គ្លេស"
+                  value={form.nameEn} onChange={e => set('nameEn', e.target.value)} />
+              </div>
+            </div>
+
+            <div className={styles.row}>
+              <div className={styles.field}>
+                <label className={styles.label}>ភេទ</label>
+                <select className={styles.select} value={form.gender} onChange={e => set('gender', e.target.value)}>
+                  <option value="">-- ជ្រើសរើស --</option>
+                  <option value="M">ប្រុស</option>
+                  <option value="F">ស្រី</option>
+                </select>
+              </div>
+              <div className={styles.field}>
+                <label className={styles.label}>ថ្ងៃខែឆ្នាំកំណើត</label>
+                <input type="date" className={styles.input}
+                  value={form.dateOfBirth} onChange={e => set('dateOfBirth', e.target.value)} />
+              </div>
+            </div>
+
+            <div className={styles.row}>
+              <div className={styles.field}>
+                <label className={styles.label}>លេខទូរស័ព្ទ</label>
+                <input type="tel" className={styles.input}
+                  placeholder="012 345 678"
+                  value={form.phone} onChange={e => set('phone', e.target.value)} />
+              </div>
+              <div className={styles.field}>
+                <label className={styles.label}>សញ្ជាតិ</label>
+                <input className={styles.input}
+                  placeholder="ខ្មែរ"
+                  value={form.nationality} onChange={e => set('nationality', e.target.value)} />
+              </div>
+            </div>
+          </div>
+
+          {/* ── Residence ── */}
+          <div className={styles.section}>
+            <div className={styles.sectionTitle}>ទីតាំងស្នាក់នៅ</div>
+
+            <div className={styles.row}>
+              <div className={styles.field}>
+                <label className={styles.label}>វត្ត</label>
+                <Select
+                  styles={selectStyles}
+                  menuPortalTarget={typeof document !== 'undefined' ? document.body : null}
+                  menuPosition="fixed"
+                  placeholder="-- ជ្រើសរើស --"
+                  options={pagodas.map(p => ({ value: p.name, label: p.name }))}
+                  value={form.wat ? { value: form.wat, label: form.wat } : null}
+                  onChange={(opt: any) => setForm(v => ({ ...v, wat: opt?.value || '', kuti: '', kutiHead: '' }))}
+                  isClearable
+                />
+              </div>
+              <div className={styles.field}>
+                <label className={styles.label}>កុដិ</label>
+                <Select
+                  styles={selectStyles}
+                  menuPortalTarget={typeof document !== 'undefined' ? document.body : null}
+                  menuPosition="fixed"
+                  placeholder="-- ជ្រើសរើស --"
+                  options={watKutis.map(k => ({ value: k.name, label: k.name }))}
+                  value={form.kuti ? { value: form.kuti, label: form.kuti } : null}
+                  onChange={(opt: any) => {
+                    const val = opt?.value || '';
+                    const sk = watKutis.find(k => k.name === val);
+                    setForm(v => ({ ...v, kuti: val, kutiHead: sk?.head?.name || '' }));
+                  }}
+                  isDisabled={!form.wat}
+                  isClearable
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* ── Family ── */}
+          <div className={styles.section}>
+            <div className={styles.sectionTitle}>ព័ត៌មានគ្រួសារ</div>
+
+            <div className={styles.row}>
+              <div className={styles.field}>
+                <label className={styles.label}>ឈ្មោះឳពុកម្តាយ/អាណាព្យាបាល</label>
+                <input className={styles.input}
+                  value={form.parentName} onChange={e => set('parentName', e.target.value)} />
+              </div>
+              <div className={styles.field}>
+                <label className={styles.label}>លេខទូរស័ព្ទឳពុកម្តាយ/អាណាព្យាបាល</label>
+                <input type="tel" className={styles.input}
+                  value={form.parentPhone} onChange={e => set('parentPhone', e.target.value)} />
+              </div>
+            </div>
+          </div>
+
+          {/* ── Academic ── */}
+          <div className={styles.section}>
+            <div className={styles.sectionTitle}>ព័ត៌មានសិក្សា</div>
+
+            <div className={styles.row}>
+              <div className={styles.field}>
+                <label className={styles.label}>ឆ្នាំសិក្សា</label>
+                <input className={styles.input} disabled
+                  style={{ opacity: 0.8, cursor: 'not-allowed' }}
+                  value={form.academicYear} />
+              </div>
+              <div className={styles.field}>
+                <label className={styles.label}>កម្រិតសិក្សា</label>
+                <Select
+                  styles={selectStyles}
+                  menuPortalTarget={typeof document !== 'undefined' ? document.body : null}
+                  menuPosition="fixed"
+                  placeholder="-- ជ្រើសរើស --"
+                  options={educationLevels.map((l: any) => ({ value: l.name, label: l.name }))}
+                  value={form.educationLevel ? { value: form.educationLevel, label: form.educationLevel } : null}
+                  onChange={(opt: any) => setForm(v => ({ ...v, educationLevel: opt?.value || '', grade: '' }))}
+                  isClearable
+                />
+              </div>
+            </div>
+
+            <div className={styles.row}>
+              <div className={styles.field}>
+                <label className={styles.label}>ថ្នាក់ទី</label>
+                <Select
+                  styles={selectStyles}
+                  menuPortalTarget={typeof document !== 'undefined' ? document.body : null}
+                  menuPosition="fixed"
+                  placeholder="-- ជ្រើសរើស --"
+                  options={(selectedLevel?.grades || []).map((g: any) => ({ value: g.name, label: g.name }))}
+                  value={form.grade ? { value: form.grade, label: form.grade } : null}
+                  onChange={(opt: any) => set('grade', opt?.value || '')}
+                  isDisabled={!form.educationLevel}
+                  isClearable
+                />
+              </div>
+            </div>
+
+            <div className={styles.field}>
+              <label className={styles.label}>កំណត់ចំណាំ</label>
+              <textarea className={styles.textarea}
+                value={form.notes} onChange={e => set('notes', e.target.value)} />
+            </div>
+          </div>
+
+          <button type="submit" className={styles.submitBtn} disabled={submitting}>
+            {submitting ? 'កំពុងបញ្ជូន...' : 'បញ្ជូនព័ត៌មាន'}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}

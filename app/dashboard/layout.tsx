@@ -34,14 +34,23 @@ export default async function DashboardLayout({ children }: { children: React.Re
     } catch {}
   }
 
-  let pendingCount = 0;
+  let pendingExamRequests = 0;
   try {
-    pendingCount = await prisma.examRequest.count({ where: { status: 'PENDING' } });
+    pendingExamRequests = await prisma.examRequest.count({ where: { status: 'PENDING' } });
+  } catch {}
+
+  let pendingRegistrations = 0;
+  try {
+    pendingRegistrations = await prisma.studentRegistration.count({ where: { status: 'PENDING' } });
   } catch {}
 
   return (
     <div className={styles.dashboardContainer}>
-      <Sidebar user={userInfo} pendingCount={pendingCount} permMap={parsePermissions(userInfo.permissions)} />
+      <Sidebar
+        user={userInfo}
+        pendingCounts={{ examRequests: pendingExamRequests, registrations: pendingRegistrations }}
+        permMap={parsePermissions(userInfo.permissions)}
+      />
       <main className={styles.mainContent}>
         {children}
       </main>

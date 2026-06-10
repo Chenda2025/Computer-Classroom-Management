@@ -52,6 +52,29 @@ model Student {
   updatedAt    DateTime      @updatedAt
 }
 
+model StudentRegistration {
+  id             String   @id @default(uuid())
+  status         String   @default("PENDING")
+  name           String
+  nameEn         String?
+  phone          String?
+  photoUrl       String?
+  gender         String?
+  dateOfBirth    String?
+  nationality    String?
+  wat            String?
+  kuti           String?
+  kutiHead       String?
+  parentName     String?
+  parentPhone    String?
+  academicYear   String?
+  educationLevel String?
+  grade          String?
+  notes          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
 model Teacher {
   id          String   @id @default(uuid())
   teacherCode String   @unique

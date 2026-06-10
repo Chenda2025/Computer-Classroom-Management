@@ -10,6 +10,7 @@ export const PERM_ACTIONS: { value: PermAction; label: string; color: string; bg
 ];
 
 export const MODULES = [
+  { key: 'registrations',  label: 'ការស្នើសុំចុះឈ្មោះ', icon: '🆕', group: 'ការគ្រប់គ្រង' },
   { key: 'students',       label: 'បញ្ជីសិស្ស',    icon: '👨‍🎓', group: 'ការគ្រប់គ្រង' },
   { key: 'teachers',       label: 'បញ្ជីគ្រូ',      icon: '👨‍🏫', group: 'ការគ្រប់គ្រង' },
   { key: 'classes',        label: 'ថ្នាក់រៀន',       icon: '🏫',  group: 'ការគ្រប់គ្រង' },

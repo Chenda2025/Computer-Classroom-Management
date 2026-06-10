@@ -22,6 +22,7 @@ const NAV_GROUPS = [
   {
     label: 'ការគ្រប់គ្រង',
     items: [
+      { href: '/dashboard/registrations', icon: '🆕', label: 'ការស្នើសុំចុះឈ្មោះ', badgeKey: 'registrations' },
       { href: '/dashboard/students',   icon: '👨‍🎓', label: 'បញ្ជីសិស្ស' },
       { href: '/dashboard/teachers',   icon: '👨‍🏫', label: 'បញ្ជីគ្រូ' },
       { href: '/dashboard/classes',    icon: '🏫',  label: 'ថ្នាក់រៀន' },
@@ -33,7 +34,7 @@ const NAV_GROUPS = [
     label: 'ការប្រឡង',
     items: [
       { href: '/dashboard/exams',         icon: '📝', label: 'ការប្រឡង' },
-      { href: '/dashboard/exam-requests', icon: '📋', label: 'ស្នើរសូម', badge: true },
+      { href: '/dashboard/exam-requests', icon: '📋', label: 'ស្នើរសូម', badgeKey: 'examRequests' },
       { href: '/dashboard/exam-reports',  icon: '📊', label: 'របាយការណ៍' },
     ],
   },
@@ -49,7 +50,7 @@ const NAV_GROUPS = [
   },
 ];
 
-export default function Sidebar({ user, pendingCount = 0, permMap = {} }: { user?: UserInfo; pendingCount?: number; permMap?: PermMap }) {
+export default function Sidebar({ user, pendingCounts = {}, permMap = {} }: { user?: UserInfo; pendingCounts?: Partial<Record<'examRequests' | 'registrations', number>>; permMap?: PermMap }) {
   const pathname = usePathname();
   const role = user?.role ?? 'MONITOR';
 
@@ -101,7 +102,8 @@ export default function Sidebar({ user, pendingCount = 0, permMap = {} }: { user
               if (!moduleKey) return true; // dashboard home always visible
               return canView(permMap, moduleKey, role);
             }).map(item => {
-              const badge = (item as any).badge && pendingCount > 0 ? pendingCount : 0;
+              const badgeKey = (item as any).badgeKey as 'examRequests' | 'registrations' | undefined;
+              const badge = badgeKey ? (pendingCounts[badgeKey] ?? 0) : 0;
               return (
                 <Link
                   key={item.href}
