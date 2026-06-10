@@ -17,7 +17,9 @@ export async function PUT(request: Request, { params }: Ctx) {
     if (name?.trim()) data.name = name.trim();
     if (role === 'ADMIN' || role === 'MONITOR') data.role = role;
     if (password && password.length >= 6) data.password = await bcrypt.hash(password, 10);
-    if (permissions !== undefined) data.permissions = JSON.stringify(permissions);
+    if (permissions !== undefined) {
+      data.permissions = JSON.stringify(permissions && typeof permissions === 'object' ? permissions : {});
+    }
 
     const user = await prisma.user.update({
       where: { id },

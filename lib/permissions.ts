@@ -27,7 +27,10 @@ export const MODULES = [
 export type ModuleKey = typeof MODULES[number]['key'];
 
 export function parsePermissions(raw: string | null | undefined): PermMap {
-  try { return JSON.parse(raw || '{}'); } catch { return {}; }
+  try {
+    const parsed = JSON.parse(raw || '{}');
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch { return {}; }
 }
 
 function has(perms: PermMap, module: string, action: PermAction): boolean {
