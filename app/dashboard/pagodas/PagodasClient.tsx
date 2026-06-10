@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { parsePermissions, canInsert, canWrite, canDelete } from '../../../lib/permissions';
+import { useRouter } from 'next/navigation';
 import Select from 'react-select';
 import styles from '../students/students.module.css';
 import k from './pagodas.module.css';
@@ -72,6 +73,7 @@ const EMPTY_MONK   = { id: '', name: '', age: '', gender: 'ប្រុស', pho
 
 export default function PagodasClient({ initialPagodas, userRole, userPerms }: Props) {
   const permMap = useMemo(() => parsePermissions(userPerms), [userPerms]);
+  const router = useRouter();
   const canIns = canInsert(permMap, 'pagodas', userRole);
   const canWri = canWrite(permMap, 'pagodas', userRole);
   const canDel = canDelete(permMap, 'pagodas', userRole);
@@ -80,6 +82,7 @@ export default function PagodasClient({ initialPagodas, userRole, userPerms }: P
 
   // Data State
   const [pagodas, setPagodas] = useState<Pagoda[]>(initialPagodas);
+  useEffect(() => { setPagodas(initialPagodas); }, [initialPagodas]);
   const [kutis, setKutis] = useState<Kuti[]>([]);
   const [headMonks, setHeadMonks] = useState<Monk[]>([]);
   const [subHeadMonks, setSubHeadMonks] = useState<Monk[]>([]);
@@ -164,6 +167,7 @@ export default function PagodasClient({ initialPagodas, userRole, userPerms }: P
         setPagodas(prev => [...prev, { ...data, _count: { kutis: 0 } }]);
       }
       setPagodaModal(false);
+      window.location.reload();
     } catch (e) {
       alert(e);
     } finally { setPagodaSubmitting(false); }
@@ -196,6 +200,7 @@ export default function PagodasClient({ initialPagodas, userRole, userPerms }: P
         setPagodas(prev => prev.map(p => addedCounts[p.id] ? { ...p, _count: { kutis: p._count.kutis + addedCounts[p.id] } } : p));
       }
       setKutiModal(false);
+      window.location.reload();
     } catch (e) {
       alert(e);
     } finally { setKutiSubmitting(false); }
@@ -230,6 +235,7 @@ export default function PagodasClient({ initialPagodas, userRole, userPerms }: P
         setKutiFormList(prev => prev.map((f, i) => i === monkTargetRowIndex ? { ...f, [monkTargetField]: dataArray[0].id } : f));
       }
       setMonkModal(false);
+      window.location.reload();
     } catch (e) {
       alert(e);
     } finally { setMonkSubmitting(false); }
@@ -251,6 +257,7 @@ export default function PagodasClient({ initialPagodas, userRole, userPerms }: P
           setPagodas(prev => prev.map(p => p.id === targetKuti.pagodaId ? { ...p, _count: { kutis: Math.max(0, p._count.kutis - 1) } } : p));
         }
       }
+      window.location.reload();
     } finally { setDeleteTarget(null); setDeleting(false); }
   };
 

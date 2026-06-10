@@ -1,7 +1,8 @@
 'use client';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import s from './users.module.css';
 import { MODULES, PERM_ACTIONS, parsePermissions, type PermAction, type PermMap } from '../../../lib/permissions';
+import { useRouter } from 'next/navigation';
 
 interface User {
   id: string;
@@ -34,7 +35,9 @@ function avatarGrad(name: string) {
 const GROUPS = ['ការគ្រប់គ្រង', 'ការប្រឡង', 'ផ្សេងៗ'] as const;
 
 export default function UsersClient({ initialUsers, currentUserId }: Props) {
+  const router = useRouter();
   const [users, setUsers]           = useState<User[]>(initialUsers);
+  useEffect(() => { setUsers(initialUsers); }, [initialUsers]);
   const [search, setSearch]         = useState('');
   const [modal, setModal]           = useState(false);
   const [editTarget, setEditTarget] = useState<User | null>(null);
@@ -77,6 +80,7 @@ export default function UsersClient({ initialUsers, currentUserId }: Props) {
       if (editTarget) setUsers(p => p.map(u => u.id === editTarget.id ? { ...u, ...data } : u));
       else setUsers(p => [...p, { ...data, permissions: '{}' }]);
       setModal(false);
+      window.location.reload();
     } finally { setSubmitting(false); }
   };
 
@@ -86,6 +90,7 @@ export default function UsersClient({ initialUsers, currentUserId }: Props) {
       const res = await fetch(`/api/users/${deleteTarget.id}`, { method: 'DELETE' });
       if (!res.ok) { const d = await res.json(); alert(d.error); return; }
       setUsers(p => p.filter(u => u.id !== deleteTarget.id));
+      window.location.reload();
     } finally { setDeleteTarget(null); setDeleting(false); }
   };
 
@@ -100,6 +105,7 @@ export default function UsersClient({ initialUsers, currentUserId }: Props) {
       if (!res.ok) { alert(data.error ?? 'មានបញ្ហា'); return; }
       setUsers(p => p.map(u => u.id === permTarget.id ? { ...u, permissions: data.permissions } : u));
       setPermTarget(null);
+      window.location.reload();
     } finally { setPermSaving(false); }
   };
 

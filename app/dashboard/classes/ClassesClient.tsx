@@ -1,6 +1,7 @@
 'use client';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { parsePermissions, canInsert, canWrite, canDelete } from '../../../lib/permissions';
+import { useRouter } from 'next/navigation';
 import styles from '../students/students.module.css';
 import cc from './classes.module.css';
 import ExportModal from './ExportModal';
@@ -53,10 +54,12 @@ function levelColor(level: string | null): [string, string] {
 
 export default function ClassesClient({ initialClasses, userRole, userPerms }: Props) {
   const permMap = useMemo(() => parsePermissions(userPerms), [userPerms]);
+  const router = useRouter();
   const canIns = canInsert(permMap, 'classes', userRole);
   const canWri = canWrite(permMap, 'classes', userRole);
   const canDel = canDelete(permMap, 'classes', userRole);
   const [classes, setClasses] = useState<ClassRow[]>(initialClasses);
+  useEffect(() => { setClasses(initialClasses); }, [initialClasses]);
   const [search, setSearch] = useState('');
   const [filterYear, setFilterYear] = useState('');
 
@@ -126,6 +129,7 @@ export default function ClassesClient({ initialClasses, userRole, userPerms }: P
       if (editingId) setClasses(prev => prev.map(c => c.id === editingId ? { ...c, ...data } : c));
       else setClasses(prev => [data, ...prev]);
       setModal(false);
+      window.location.reload();
     } finally { setSubmitting(false); }
   };
 
@@ -134,6 +138,7 @@ export default function ClassesClient({ initialClasses, userRole, userPerms }: P
     try {
       await fetch(`/api/classes/${deleteTarget}`, { method: 'DELETE' });
       setClasses(prev => prev.filter(c => c.id !== deleteTarget));
+      window.location.reload();
     } finally { setDeleteTarget(null); setDeleting(false); }
   };
 
@@ -146,6 +151,7 @@ export default function ClassesClient({ initialClasses, userRole, userPerms }: P
       });
       setClasses(prev => prev.filter(c => !selectedIds.has(c.id)));
       setSelectedIds(new Set()); setBulkDeleteConfirm(false);
+      window.location.reload();
     } finally { setBulkDeleting(false); }
   };
 

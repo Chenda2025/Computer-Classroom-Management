@@ -1,6 +1,7 @@
 'use client';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { parsePermissions, canInsert, canWrite, canDelete } from '../../../lib/permissions';
+import { useRouter } from 'next/navigation';
 import styles from '../students/students.module.css';
 import cardStyles from './exams.module.css';
 
@@ -33,10 +34,12 @@ const EMPTY = { title: '', type: 'OFFLINE', courseId: '', isActive: true };
 
 export default function ExamsClient({ initialExams, courses, userRole, userPerms }: Props) {
   const permMap = useMemo(() => parsePermissions(userPerms), [userPerms]);
+  const router = useRouter();
   const canIns = canInsert(permMap, 'exams', userRole);
   const canWri = canWrite(permMap, 'exams', userRole);
   const canDel = canDelete(permMap, 'exams', userRole);
   const [exams, setExams] = useState<Exam[]>(initialExams);
+  useEffect(() => { setExams(initialExams); }, [initialExams]);
   const [search, setSearch] = useState('');
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState<typeof EMPTY>(EMPTY);
@@ -72,6 +75,7 @@ export default function ExamsClient({ initialExams, courses, userRole, userPerms
       if (editingId) setExams(prev => prev.map(e => e.id === editingId ? { ...e, ...data } : e));
       else setExams(prev => [data, ...prev]);
       setModal(false);
+      window.location.reload();
     } finally { setSubmitting(false); }
   };
 
@@ -80,6 +84,7 @@ export default function ExamsClient({ initialExams, courses, userRole, userPerms
     try {
       await fetch(`/api/exams/${deleteTarget}`, { method: 'DELETE' });
       setExams(prev => prev.filter(e => e.id !== deleteTarget));
+      window.location.reload();
     } finally { setDeleteTarget(null); setDeleting(false); }
   };
 

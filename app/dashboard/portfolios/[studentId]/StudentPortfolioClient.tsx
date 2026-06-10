@@ -1,5 +1,7 @@
 'use client';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { parsePermissions, canInsert, canWrite, canDelete } from '../../../../lib/permissions';
 import Link from 'next/link';
 import styles from '../../students/students.module.css';
 import cardStyles from '../portfolios.module.css';
@@ -32,14 +34,20 @@ interface PortfolioItem {
 }
 interface Props {
   student: StudentInfo; courses: Course[];
-  initialPortfolios: PortfolioItem[]; userRole: string;
+  initialPortfolios: PortfolioItem[]; userRole: string; userPerms: string;
 }
 
 const EMPTY = { title: '', fileUrl: '', courseId: '' };
 
-export default function StudentPortfolioClient({ student, courses, initialPortfolios, userRole }: Props) {
-  const isAdmin = userRole === 'ADMIN';
+export default function StudentPortfolioClient({ student, courses, initialPortfolios, userRole, userPerms }: Props) {
+  const permMap = useMemo(() => parsePermissions(userPerms), [userPerms]);
+  const canIns = canInsert(permMap, 'portfolios', userRole);
+  const canWri = canWrite(permMap, 'portfolios', userRole);
+  const canDel = canDelete(permMap, 'portfolios', userRole);
+  
   const [portfolios, setPortfolios] = useState<PortfolioItem[]>(initialPortfolios);
+  const router = useRouter();
+  useEffect(() => { setPortfolios(initialPortfolios); }, [initialPortfolios]);
   const [modal, setModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(EMPTY);
@@ -116,6 +124,7 @@ export default function StudentPortfolioClient({ student, courses, initialPortfo
       setModal(false);
       setEditingId(null);
       setForm(EMPTY);
+      window.location.reload();
     } finally { setSubmitting(false); }
   };
 
@@ -124,6 +133,7 @@ export default function StudentPortfolioClient({ student, courses, initialPortfo
     try {
       await fetch(`/api/portfolios/${deleteTarget}`, { method: 'DELETE' });
       setPortfolios(prev => prev.filter(p => p.id !== deleteTarget));
+      window.location.reload();
     } finally { setDeleteTarget(null); setDeleting(false); }
   };
 
@@ -150,7 +160,7 @@ export default function StudentPortfolioClient({ student, courses, initialPortfo
             </p>
           </div>
         </div>
-        {isAdmin && <button className="btn-primary" onClick={openAdd}>+ បន្ថែមស្នាដៃ</button>}
+        {canIns && <button className="btn-primary" onClick={openAdd}>+ បន្ថែមស្នាដៃ</button>}
       </div>
 
       {portfolios.length === 0 ? (
@@ -185,10 +195,10 @@ export default function StudentPortfolioClient({ student, courses, initialPortfo
 
                 <div className={cardStyles.cardActions}>
                   <button className={cardStyles.iconBtn} onClick={() => setViewTarget(p)} title="មើល">👁️</button>
-                  {isAdmin && (
+                  {(canWri || canDel) && (
                     <>
-                      <button className={cardStyles.iconBtn} onClick={() => openEdit(p)} title="កែប្រែ">✏️</button>
-                      <button className={`${cardStyles.iconBtn} ${cardStyles.deleteBtn}`} onClick={() => setDeleteTarget(p.id)} title="លុប">🗑️</button>
+                      {canWri && <button className={cardStyles.iconBtn} onClick={() => openEdit(p)} title="កែប្រែ">✏️</button>}
+                      {canDel && <button className={`${cardStyles.iconBtn} ${cardStyles.deleteBtn}`} onClick={() => setDeleteTarget(p.id)} title="លុប">🗑️</button>}
                     </>
                   )}
                 </div>

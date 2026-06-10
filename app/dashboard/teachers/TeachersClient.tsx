@@ -1,6 +1,7 @@
 'use client';
 import { useState, useMemo, useEffect } from 'react';
 import { parsePermissions, canInsert, canWrite, canDelete } from '../../../lib/permissions';
+import { useRouter } from 'next/navigation';
 import styles from '../students/students.module.css';
 import tc from './teachers.module.css';
 import ExportModal from './ExportModal';
@@ -62,10 +63,12 @@ function subjectColor(subject: string | null) {
 
 export default function TeachersClient({ initialTeachers, courses, userRole, userPerms }: Props) {
   const permMap = useMemo(() => parsePermissions(userPerms), [userPerms]);
+  const router = useRouter();
   const canIns = canInsert(permMap, 'teachers', userRole);
   const canWri = canWrite(permMap, 'teachers', userRole);
   const canDel = canDelete(permMap, 'teachers', userRole);
   const [teachers, setTeachers] = useState<Teacher[]>(initialTeachers);
+  useEffect(() => { setTeachers(initialTeachers); }, [initialTeachers]);
   const [search, setSearch] = useState('');
   const [filterSubject, setFilterSubject] = useState('');
   const [filterGender, setFilterGender] = useState('');
@@ -186,6 +189,7 @@ export default function TeachersClient({ initialTeachers, courses, userRole, use
       if (editingId) setTeachers(prev => prev.map(t => t.id === editingId ? { ...t, ...data } : t));
       else setTeachers(prev => [data, ...prev]);
       setModal(false);
+      window.location.reload();
     } finally { setSubmitting(false); }
   };
 
@@ -242,6 +246,7 @@ export default function TeachersClient({ initialTeachers, courses, userRole, use
     try {
       await fetch(`/api/teachers/${deleteTarget}`, { method: 'DELETE' });
       setTeachers(prev => prev.filter(t => t.id !== deleteTarget));
+      window.location.reload();
     } finally { setDeleteTarget(null); setDeleting(false); }
   };
 
@@ -253,6 +258,7 @@ export default function TeachersClient({ initialTeachers, courses, userRole, use
         body: JSON.stringify({ ids: Array.from(selectedIds) }) });
       setTeachers(prev => prev.filter(t => !selectedIds.has(t.id)));
       setSelectedIds(new Set()); setBulkDeleteConfirm(false);
+      window.location.reload();
     } finally { setBulkDeleting(false); }
   };
 

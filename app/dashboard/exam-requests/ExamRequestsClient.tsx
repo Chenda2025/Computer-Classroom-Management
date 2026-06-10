@@ -1,6 +1,7 @@
 'use client';
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { parsePermissions, canInsert, canWrite, canDelete } from '../../../lib/permissions';
+import { useRouter } from 'next/navigation';
 import styles from '../students/students.module.css';
 import cardStyles from './exam-requests.module.css';
 import ExportModal from './ExportModal';
@@ -13,6 +14,10 @@ const STATUS_ACCENT: Record<string, { color: string; light: string }> = {
 
 function initials(name: string) {
   return name.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase();
+}
+
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString('km-KH', { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
 interface StudentRef { id: string; studentCode: string; name: string; gender?: string | null; photoUrl: string | null; }
@@ -34,10 +39,21 @@ const STATUS_STYLE: Record<string, { color: string; bg: string; label: string }>
 
 export default function ExamRequestsClient({ initialRequests, students, exams, courses, userRole, userPerms }: Props) {
   const permMap = useMemo(() => parsePermissions(userPerms), [userPerms]);
+  const router = useRouter();
   const canIns = canInsert(permMap, 'exam-requests', userRole);
   const canWri = canWrite(permMap, 'exam-requests', userRole);
   const canDel = canDelete(permMap, 'exam-requests', userRole);
   const [requests, setRequests] = useState<Request[]>(initialRequests);
+  useEffect(() => { setRequests(initialRequests); }, [initialRequests]);
+  const [viewMode, setViewMode] = useState<'table' | 'card'>('card');
+  useEffect(() => {
+    const saved = localStorage.getItem('examRequestViewMode') as 'table' | 'card' | null;
+    if (saved === 'card' || saved === 'table') setViewMode(saved);
+  }, []);
+  const switchViewMode = (mode: 'table' | 'card') => {
+    setViewMode(mode);
+    localStorage.setItem('examRequestViewMode', mode);
+  };
   const [search, setSearch] = useState('');
   const [filterCourse, setFilterCourse] = useState('');
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -141,6 +157,7 @@ export default function ExamRequestsClient({ initialRequests, students, exams, c
       setRequests(prev => [...data, ...prev]);
       setModal(false);
       setForm({ courseId: '', studentIds: [], examId: '', note: '' });
+      window.location.reload();
     } finally { setSubmitting(false); }
   };
 
@@ -153,12 +170,14 @@ export default function ExamRequestsClient({ initialRequests, students, exams, c
     if (res.ok) {
       const data = await res.json();
       setRequests(prev => prev.map(r => r.id === id ? { ...r, ...data } : r));
+      window.location.reload();
     }
   };
 
   const handleDelete = async (id: string) => {
     await fetch(`/api/exam-requests/${id}`, { method: 'DELETE' });
     setRequests(prev => prev.filter(r => r.id !== id));
+    window.location.reload();
   };
 
   return (
@@ -254,12 +273,92 @@ export default function ExamRequestsClient({ initialRequests, students, exams, c
             </div>
           )}
         </div>
+
+        <div className={styles.viewToggle}>
+          <button
+            className={`${styles.viewToggleBtn} ${viewMode === 'table' ? styles.viewToggleActive : ''}`}
+            onClick={() => switchViewMode('table')}
+            title="មើលជាតារាង"
+          >
+            ☰
+          </button>
+          <button
+            className={`${styles.viewToggleBtn} ${viewMode === 'card' ? styles.viewToggleActive : ''}`}
+            onClick={() => switchViewMode('card')}
+            title="មើលជាកាត"
+          >
+            ⊞
+          </button>
+        </div>
       </div>
 
       {filtered.length === 0 ? (
         <div className={styles.emptyState}>
           <div className={styles.emptyIcon}>📋</div>
           <p>{search ? 'រកមិនឃើញ' : 'មិនទាន់មានការស្នើរសូមទេ'}</p>
+        </div>
+      ) : viewMode === 'table' ? (
+        <div className={styles.tableWrapper}>
+          <table className={styles.table}>
+            <thead className={styles.thead}>
+              <tr>
+                <th>#</th>
+                <th>សិស្ស</th>
+                <th>ប្រឡង</th>
+                <th>វគ្គសិក្សា</th>
+                <th>ចំណាំ</th>
+                <th>ស្ថានភាព</th>
+                <th>កាលបរិច្ឆេទ</th>
+                {(canWri || canDel) && <th>ការគ្រប់គ្រង</th>}
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((r, i) => {
+                const s = STATUS_STYLE[r.status] ?? STATUS_STYLE.PENDING;
+                return (
+                  <tr key={r.id} className={styles.row}>
+                    <td className={styles.indexCell}>{i + 1}</td>
+                    <td className={styles.nameCell}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        {r.student.photoUrl ? (
+                          <img src={r.student.photoUrl} alt="" className={styles.avatar} style={{ objectFit: 'cover' }} />
+                        ) : (
+                          <div className={styles.avatarPlaceholder}>{initials(r.student.name)}</div>
+                        )}
+                        <div>
+                          <div>{r.student.name}</div>
+                          <span className={styles.codeBadge}>{r.student.studentCode}</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td>{r.exam.title}</td>
+                    <td className={styles.mutedCell}>{r.exam.course.name}</td>
+                    <td className={styles.mutedCell}>{r.note ?? '—'}</td>
+                    <td>
+                      <span className={cardStyles.statusBadge} style={{ background: s.bg, color: s.color }}>
+                        <span className={cardStyles.statusDot} />
+                        {s.label}
+                      </span>
+                    </td>
+                    <td className={styles.mutedCell}>{formatDate(r.createdAt)}</td>
+                    {(canWri || canDel) && (
+                      <td>
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          {canWri && r.status !== 'APPROVED' && (
+                            <button className={`${cardStyles.statusBtn} ${cardStyles.approveBtn}`} onClick={() => updateStatus(r.id, 'APPROVED')}>✓ អនុម័ត</button>
+                          )}
+                          {canWri && r.status !== 'REJECTED' && (
+                            <button className={`${cardStyles.statusBtn} ${cardStyles.rejectBtn}`} onClick={() => updateStatus(r.id, 'REJECTED')}>✗ បដិសេធ</button>
+                          )}
+                          {canDel && <button className={`${cardStyles.iconBtn} ${cardStyles.deleteBtn}`} onClick={() => handleDelete(r.id)} title="លុប">🗑️</button>}
+                        </div>
+                      </td>
+                    )}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>

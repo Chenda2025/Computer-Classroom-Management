@@ -25,7 +25,7 @@ export default function NewStudentPage() {
 
       if (res.ok) {
         router.push('/dashboard/students');
-        router.refresh(); // Refresh the server component to load new data
+        window.location.reload(); // Refresh the server component to load new data
       } else {
         const data = await res.json();
         setError(data.error || 'មានបញ្ហាក្នុងការរក្សាទុក');

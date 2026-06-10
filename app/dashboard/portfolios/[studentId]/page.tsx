@@ -1,12 +1,12 @@
 import { redirect } from 'next/navigation';
-import { getSession } from '../../../../lib/auth';
+import { getSessionUser } from '../../../../lib/getSessionUser';
 import { prisma } from '../../../../lib/prisma';
 import StudentPortfolioClient from './StudentPortfolioClient';
 
 type RouteContext = { params: Promise<{ studentId: string }> };
 
 export default async function StudentPortfolioPage({ params }: RouteContext) {
-  const session = await getSession();
+  const session = await getSessionUser();
   if (!session) redirect('/');
 
   const { studentId } = await params;
@@ -37,6 +37,7 @@ export default async function StudentPortfolioPage({ params }: RouteContext) {
         updatedAt: p.updatedAt.toISOString(),
       }))}
       userRole={session.role as string}
+      userPerms={session.permissions}
     />
   );
 }

@@ -1,4 +1,5 @@
 'use client';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import styles from '../app/dashboard/dashboard.module.css';
@@ -53,6 +54,22 @@ const NAV_GROUPS = [
 export default function Sidebar({ user, pendingCounts = {}, permMap = {} }: { user?: UserInfo; pendingCounts?: Partial<Record<'examRequests' | 'registrations', number>>; permMap?: PermMap }) {
   const pathname = usePathname();
   const role = user?.role ?? 'MONITOR';
+  const [counts, setCounts] = useState(pendingCounts);
+
+  useEffect(() => { setCounts(pendingCounts); }, [pendingCounts]);
+
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch('/api/notifications');
+        if (res.ok) {
+          const data = await res.json();
+          setCounts(data);
+        }
+      } catch (e) {}
+    }, 15000);
+    return () => clearInterval(interval);
+  }, []);
 
   const isActive = (href: string) =>
     href === '/dashboard' ? pathname === '/dashboard' : pathname.startsWith(href);
@@ -103,7 +120,7 @@ export default function Sidebar({ user, pendingCounts = {}, permMap = {} }: { us
               return canView(permMap, moduleKey, role);
             }).map(item => {
               const badgeKey = (item as any).badgeKey as 'examRequests' | 'registrations' | undefined;
-              const badge = badgeKey ? (pendingCounts[badgeKey] ?? 0) : 0;
+              const badge = badgeKey ? (counts[badgeKey] ?? 0) : 0;
               return (
                 <Link
                   key={item.href}

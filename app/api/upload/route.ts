@@ -6,7 +6,7 @@ const MAX_FILE_SIZE = 3 * 1024 * 1024; // 3MB — keeps base64 payloads reasonab
 export async function POST(request: Request) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  if (session.role !== 'ADMIN') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  if (session.role !== 'ADMIN' && session.role !== 'MONITOR') return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
 
   try {
     const formData = await request.formData();

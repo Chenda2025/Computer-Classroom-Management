@@ -1,6 +1,7 @@
 'use client';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { parsePermissions, canWrite, canDelete } from '../../../lib/permissions';
+import { useRouter } from 'next/navigation';
 import styles from '../students/students.module.css';
 
 interface Registration {
@@ -43,10 +44,12 @@ const TABS: { key: string; label: string }[] = [
 
 export default function RegistrationsClient({ initialRegistrations, userRole, userPerms }: Props) {
   const permMap = useMemo(() => parsePermissions(userPerms), [userPerms]);
+  const router = useRouter();
   const canWri = canWrite(permMap, 'registrations', userRole);
   const canDel = canDelete(permMap, 'registrations', userRole);
 
   const [registrations, setRegistrations] = useState<Registration[]>(initialRegistrations);
+  useEffect(() => { setRegistrations(initialRegistrations); }, [initialRegistrations]);
   const [tab, setTab] = useState('PENDING');
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState('');
@@ -85,6 +88,7 @@ export default function RegistrationsClient({ initialRegistrations, userRole, us
       if (!res.ok) { setError(data.error || 'មានបញ្ហា'); return; }
       const newStatus = action === 'APPROVE' ? 'APPROVED' : 'REJECTED';
       setRegistrations(prev => prev.map(r => r.id === id ? { ...r, status: newStatus } : r));
+      window.location.reload();
     } finally {
       setBusyId(null);
     }
@@ -95,7 +99,10 @@ export default function RegistrationsClient({ initialRegistrations, userRole, us
     setBusyId(id);
     try {
       const res = await fetch(`/api/registrations/${id}`, { method: 'DELETE' });
-      if (res.ok) setRegistrations(prev => prev.filter(r => r.id !== id));
+      if (res.ok) {
+        setRegistrations(prev => prev.filter(r => r.id !== id));
+        window.location.reload();
+      }
     } finally {
       setBusyId(null);
     }

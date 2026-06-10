@@ -1,6 +1,7 @@
 'use client';
 import { useState, useMemo, useEffect } from 'react';
 import { parsePermissions, canInsert, canWrite, canDelete } from '../../../lib/permissions';
+import { useRouter } from 'next/navigation';
 import Select from 'react-select';
 import CreatableSelect from 'react-select/creatable';
 import Link from 'next/link';
@@ -105,12 +106,14 @@ function isComplete(s: Student) {
 
 export default function StudentsClient({ initialStudents, userRole, userPerms }: Props) {
   const permMap = useMemo(() => parsePermissions(userPerms), [userPerms]);
+  const router = useRouter();
   const canIns = canInsert(permMap, 'students', userRole);
   const canWri = canWrite(permMap, 'students', userRole);
   const canDel = canDelete(permMap, 'students', userRole);
   const isAdmin = userRole === 'ADMIN';
 
   const [students, setStudents] = useState<Student[]>(initialStudents);
+  useEffect(() => { setStudents(initialStudents); }, [initialStudents]);
   const [search, setSearch] = useState('');
   const [pagodaFilter, setPagodaFilter] = useState('');
   const [courseFilter, setCourseFilter] = useState('');
@@ -152,6 +155,7 @@ export default function StudentsClient({ initialStudents, userRole, userPerms }:
       setStudents(prev => prev.filter(s => !selectedIds.has(s.id)));
       setSelectedIds(new Set());
       setBulkDeleteConfirm(false);
+      window.location.reload();
     } finally {
       setBulkDeleting(false);
     }
@@ -303,6 +307,7 @@ export default function StudentsClient({ initialStudents, userRole, userPerms }:
       if (!res.ok) { setAddError(data.error ?? 'មានបញ្ហាកើតឡើង'); return; }
       setStudents(prev => [{ ...data, _count: { enrollments: 0 } }, ...prev]);
       setAddModal(false);
+      window.location.reload();
     } finally {
       setAddSubmitting(false);
     }
@@ -452,6 +457,7 @@ export default function StudentsClient({ initialStudents, userRole, userPerms }:
       if (!res.ok) { setEditError(data.error ?? 'មានបញ្ហាកើតឡើង'); return; }
       setStudents(prev => prev.map(s => s.id === editingId ? { ...s, ...data } : s));
       setEditModal(false);
+      window.location.reload();
     } finally {
       setEditSubmitting(false);
     }
@@ -464,6 +470,7 @@ export default function StudentsClient({ initialStudents, userRole, userPerms }:
     try {
       await fetch(`/api/students/${deleteTarget}`, { method: 'DELETE' });
       setStudents(prev => prev.filter(s => s.id !== deleteTarget));
+      window.location.reload();
     } finally {
       setDeleteTarget(null);
       setDeleting(false);

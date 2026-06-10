@@ -1,6 +1,7 @@
 'use client';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { parsePermissions, canInsert, canWrite, canDelete } from '../../../lib/permissions';
+import { useRouter } from 'next/navigation';
 import styles from '../students/students.module.css';
 import weekStyles from './schedule.module.css';
 
@@ -48,11 +49,13 @@ function startOfWeek(d: Date) {
 
 export default function ScheduleClient({ initialItems, courses, userRole, userPerms }: Props) {
   const permMap = useMemo(() => parsePermissions(userPerms), [userPerms]);
+  const router = useRouter();
   const canIns = canInsert(permMap, 'schedule', userRole);
   const canWri = canWrite(permMap, 'schedule', userRole);
   const canDel = canDelete(permMap, 'schedule', userRole);
   const isAdmin = userRole === 'ADMIN';
   const [items, setItems] = useState<ScheduleItem[]>(initialItems);
+  useEffect(() => { setItems(initialItems); }, [initialItems]);
   const [search, setSearch] = useState('');
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState<typeof EMPTY>(EMPTY);
@@ -154,6 +157,7 @@ export default function ScheduleClient({ initialItems, courses, userRole, userPe
       if (editingId) setItems(prev => prev.map(s => s.id === editingId ? { ...s, ...data } : s));
       else setItems(prev => [...prev, data].sort((a, b) => a.startDate.localeCompare(b.startDate)));
       setModal(false);
+      window.location.reload();
     } finally { setSubmitting(false); }
   };
 
@@ -162,6 +166,7 @@ export default function ScheduleClient({ initialItems, courses, userRole, userPe
     try {
       await fetch(`/api/schedules/${deleteTarget}`, { method: 'DELETE' });
       setItems(prev => prev.filter(s => s.id !== deleteTarget));
+      window.location.reload();
     } finally { setDeleteTarget(null); setDeleting(false); }
   };
 

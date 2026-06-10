@@ -1,6 +1,7 @@
 'use client';
 import { parsePermissions, canInsert, canDelete } from '../../../lib/permissions';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import styles from '../students/students.module.css';
 import CertificatePrintModal from './CertificatePrintModal';
 import ExportModal from './ExportModal';
@@ -19,9 +20,11 @@ const EMPTY = { studentId: '', title: '', issuedDate: '', description: '' };
 
 export default function CertificatesClient({ initialCertificates, students, userRole, userPerms }: Props) {
   const permMap = useMemo(() => parsePermissions(userPerms), [userPerms]);
+  const router = useRouter();
   const canIns = canInsert(permMap, 'certificates', userRole);
   const canDel = canDelete(permMap, 'certificates', userRole);
   const [certs, setCerts] = useState<Certificate[]>(initialCertificates);
+  useEffect(() => { setCerts(initialCertificates); }, [initialCertificates]);
   const [search, setSearch] = useState('');
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState(EMPTY);
@@ -55,6 +58,7 @@ export default function CertificatesClient({ initialCertificates, students, user
       setCerts(prev => [data, ...prev]);
       setModal(false);
       setForm(EMPTY);
+      window.location.reload();
     } finally { setSubmitting(false); }
   };
 
@@ -63,6 +67,7 @@ export default function CertificatesClient({ initialCertificates, students, user
     try {
       await fetch(`/api/certificates/${deleteTarget}`, { method: 'DELETE' });
       setCerts(prev => prev.filter(c => c.id !== deleteTarget));
+      window.location.reload();
     } finally { setDeleteTarget(null); setDeleting(false); }
   };
 

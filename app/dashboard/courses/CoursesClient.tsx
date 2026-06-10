@@ -1,5 +1,5 @@
 'use client';
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { parsePermissions, canInsert, canWrite, canDelete } from '../../../lib/permissions';
 import { useRouter } from 'next/navigation';
 import styles from './courses.module.css';
@@ -64,10 +64,12 @@ export default function CoursesClient({ initialCourses, allStudents, enrolledStu
   const canIns = canInsert(permMap, 'courses', userRole);
   const canWri = canWrite(permMap, 'courses', userRole);
   const canDel = canDelete(permMap, 'courses', userRole);
+  const canInsExamReq = canInsert(permMap, 'exam-requests', userRole);
   const isAdmin = userRole === 'ADMIN';
   const router = useRouter();
 
   const [courses, setCourses] = useState<Course[]>(initialCourses);
+  useEffect(() => { setCourses(initialCourses); }, [initialCourses]);
   const [courseModal, setCourseModal] = useState<'add' | 'edit' | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -177,7 +179,7 @@ export default function CoursesClient({ initialCourses, allStudents, enrolledStu
         setCourses(prev => prev.map(c => c.id === editingId ? { ...c, ...data } : c));
       }
       closeCourseModal();
-      router.refresh();
+      window.location.reload();
     } catch {
       setFormError('មានបញ្ហាបណ្ដាញ។ សូមព្យាយាមម្ដងទៀត');
     } finally { setSubmitting(false); }
@@ -190,7 +192,7 @@ export default function CoursesClient({ initialCourses, allStudents, enrolledStu
       if (res.ok) {
         setCourses(prev => prev.filter(c => c.id !== deleteTarget));
         setSelectedIds(prev => { const n = new Set(prev); n.delete(deleteTarget); return n; });
-        router.refresh();
+        window.location.reload();
       }
     } catch { /* ignore network errors — modal closes either way */ }
     finally { setDeleteTarget(null); setDeleting(false); }
@@ -204,7 +206,7 @@ export default function CoursesClient({ initialCourses, allStudents, enrolledStu
         body: JSON.stringify({ ids: Array.from(selectedIds) }) });
       setCourses(prev => prev.filter(c => !selectedIds.has(c.id)));
       setSelectedIds(new Set()); setBulkDeleteConfirm(false);
-      router.refresh();
+      window.location.reload();
     } finally { setBulkDeleting(false); }
   };
 
@@ -297,7 +299,7 @@ export default function CoursesClient({ initialCourses, allStudents, enrolledStu
           ? { ...c, _count: { ...c._count, enrollments: c._count.enrollments + 1 } }
           : c
       ));
-      router.refresh();
+      window.location.reload();
     } catch { setEnrollError('មានបញ្ហាបណ្ដាញ');
     } finally { setEnrollingId(null); }
   };
@@ -319,7 +321,7 @@ export default function CoursesClient({ initialCourses, allStudents, enrolledStu
           ? { ...c, _count: { ...c._count, enrollments: Math.max(0, c._count.enrollments - 1) } }
           : c
       ));
-      router.refresh();
+      window.location.reload();
     } catch { setEnrollError('មានបញ្ហាបណ្ដាញ');
     } finally { setRemovingId(null); }
   };
@@ -357,7 +359,7 @@ export default function CoursesClient({ initialCourses, allStudents, enrolledStu
           : s));
       }
       setScoreInputs(prev => { const n = { ...prev }; delete n[studentId]; return n; });
-      router.refresh();
+      window.location.reload();
     } catch { setScoreError('មានបញ្ហាបណ្ដាញ');
     } finally { setSavingScoreId(null); }
   };
@@ -900,7 +902,7 @@ export default function CoursesClient({ initialCourses, allStudents, enrolledStu
                     {enrolled.length}
                   </span>
                 </div>
-                {canIns && eligibleForExamReq.length > 0 && (
+                {canInsExamReq && eligibleForExamReq.length > 0 && (
                   <div className={styles.examReqBulkBar}>
                     <label className={styles.examReqSelectAll}>
                       <input
@@ -940,7 +942,7 @@ export default function CoursesClient({ initialCourses, allStudents, enrolledStu
                   )}
                   {!enrollLoading && enrolled.map(student => (
                     <div key={student.id} className={styles.studentRow}>
-                      {canIns && student.examId && !examReqDoneIds.has(student.id) && (
+                      {canInsExamReq && student.examId && !examReqDoneIds.has(student.id) && (
                         <input
                           type="checkbox"
                           className={styles.examReqCheck}
@@ -961,7 +963,7 @@ export default function CoursesClient({ initialCourses, allStudents, enrolledStu
                         <div className={styles.studentName}>{student.name}</div>
                         <div className={styles.studentCode}>{student.studentCode}</div>
                       </div>
-                      {canIns && student.examId && (
+                      {canInsExamReq && student.examId && (
                         <button
                           className={`${styles.rowActionBtn} ${examReqDoneIds.has(student.id) ? styles.examReqDoneBtn : styles.examReqBtn}`}
                           onClick={() => handlePromoteToExamRequest(student.id, student.examId!)}
