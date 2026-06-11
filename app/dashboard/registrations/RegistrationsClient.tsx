@@ -56,17 +56,26 @@ export default function RegistrationsClient({ initialRegistrations, userRole, us
   const [viewing, setViewing] = useState<Registration | null>(null);
   const [linkCopied, setLinkCopied] = useState(false);
 
-  const filtered = useMemo(
-    () => tab === 'ALL' ? registrations : registrations.filter(r => r.status === tab),
-    [registrations, tab]
-  );
+  const isToday = (iso: string) => {
+    const d = new Date(iso);
+    const now = new Date();
+    return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();
+  };
+
+  const filtered = useMemo(() => {
+    if (tab === 'ALL') return registrations;
+    if (tab === 'APPROVED' || tab === 'REJECTED') {
+      return registrations.filter(r => r.status === tab && isToday(r.updatedAt));
+    }
+    return registrations.filter(r => r.status === tab);
+  }, [registrations, tab]);
 
   const pendingCount = useMemo(() => registrations.filter(r => r.status === 'PENDING').length, [registrations]);
 
   const tabCounts = useMemo(() => ({
     PENDING: registrations.filter(r => r.status === 'PENDING').length,
-    APPROVED: registrations.filter(r => r.status === 'APPROVED').length,
-    REJECTED: registrations.filter(r => r.status === 'REJECTED').length,
+    APPROVED: registrations.filter(r => r.status === 'APPROVED' && isToday(r.updatedAt)).length,
+    REJECTED: registrations.filter(r => r.status === 'REJECTED' && isToday(r.updatedAt)).length,
     ALL: registrations.length,
   } as Record<string, number>), [registrations]);
 

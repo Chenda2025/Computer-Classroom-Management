@@ -21,6 +21,12 @@ interface RosterStudent {
   studentCode: string;
   name: string;
   gender?: string | null;
+  dateOfBirth?: string | null;
+  phone?: string | null;
+  wat?: string | null;
+  kuti?: string | null;
+  kutiHead?: string | null;
+  photoUrl?: string | null;
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -316,26 +322,24 @@ export default function ExportModal({ students, courseName, date, statusMap, mon
       let permissionCount = 0;
       let lateCount = 0;
       
-      const absentList: string[] = [];
-      const permissionList: string[] = [];
+      const absentStudents: RosterStudent[] = [];
+      const permissionStudents: RosterStudent[] = [];
 
       students.forEach(s => {
         const st = statusMap[s.id] || 'PRESENT';
-        const gender = s.gender === 'M' ? 'ប្រុស' : s.gender === 'F' ? 'ស្រី' : '—';
         if (st === 'PRESENT') presentCount++;
         else if (st === 'ABSENT') {
           absentCount++;
-          const monthly = monthlyCounts[s.id]?.absent || 0;
-          absentList.push(`${s.studentCode} - ${s.name} - ${gender} - អវត្តមានខែនេះ: ${monthly} ដង`);
+          absentStudents.push(s);
         }
         else if (st === 'PERMISSION') {
           permissionCount++;
-          const monthly = monthlyCounts[s.id]?.permission || 0;
-          permissionList.push(`${s.studentCode} - ${s.name} - ${gender} - ច្បាប់ខែនេះ: ${monthly} ដង`);
+          permissionStudents.push(s);
         }
         else if (st === 'LATE') lateCount++;
       });
 
+      // 1. Send Summary Message
       let text = `📅 <b>របាយការណ៍វត្តមានប្រចាំថ្ងៃ</b>\n`;
       text += `📚 វគ្គសិក្សា៖ ${courseName}\n`;
       text += `📆 កាលបរិច្ឆេទ៖ ${new Date(date).toLocaleDateString('km-KH', { year: 'numeric', month: 'long', day: 'numeric' })}\n\n`;
@@ -346,30 +350,60 @@ export default function ExportModal({ students, courseName, date, statusMap, mon
       text += `📝 ច្បាប់៖ ${permissionCount} នាក់\n`;
       if (lateCount > 0) text += `⏳ យឺត៖ ${lateCount} នាក់\n`;
 
-      if (absentList.length > 0) {
-        text += `\n🔴 <b>បញ្ជីឈ្មោះអ្នកអវត្តមាន៖</b>\n`;
-        absentList.forEach((line, i) => {
-          text += `${i + 1}. ${line}\n`;
-        });
+      let summaryFd = new FormData();
+      summaryFd.append('chatId', chatId.trim());
+      summaryFd.append('caption', text);
+      let res = await fetch('/api/export/telegram', { method: 'POST', body: summaryFd });
+      if (!res.ok) throw new Error('បរាជ័យក្នុងការផ្ញើសេចក្តីសង្ខេប');
+
+      // 2. Send Absent Profiles
+      for (const s of absentStudents) {
+        const monthly = monthlyCounts[s.id]?.absent || 0;
+        const gender = s.gender === 'M' ? 'ប្រុស' : s.gender === 'F' ? 'ស្រី' : '—';
+        const phone = s.phone || '—';
+        const addr = [s.wat, s.kuti, s.kutiHead ? `(${s.kutiHead})` : ''].filter(Boolean).join(' ') || '—';
+        
+        const caption = `🔴 <b>សិស្សអវត្តមាន (ABSENT)</b>\n` +
+          `🆔 លេខកូដ: ${s.studentCode}\n` +
+          `👤 ឈ្មោះ: ${s.name}\n` +
+          `⚧ ភេទ: ${gender}\n` +
+          `📱 ទូរស័ព្ទ: ${phone}\n` +
+          `📍 អាសយដ្ឋាន: ${addr}\n` +
+          `⚠️ អវត្តមានខែនេះ: ${monthly} ដង`;
+        
+        const fd = new FormData();
+        fd.append('chatId', chatId.trim());
+        fd.append('caption', caption);
+        if (s.photoUrl) fd.append('photoUrl', s.photoUrl);
+        
+        await fetch('/api/export/telegram', { method: 'POST', body: fd });
+        await new Promise(r => setTimeout(r, 500)); // anti-spam
       }
 
-      if (permissionList.length > 0) {
-        text += `\n🔵 <b>បញ្ជីឈ្មោះអ្នកសុំច្បាប់៖</b>\n`;
-        permissionList.forEach((line, i) => {
-          text += `${i + 1}. ${line}\n`;
-        });
+      // 3. Send Permission Profiles
+      for (const s of permissionStudents) {
+        const monthly = monthlyCounts[s.id]?.permission || 0;
+        const gender = s.gender === 'M' ? 'ប្រុស' : s.gender === 'F' ? 'ស្រី' : '—';
+        const phone = s.phone || '—';
+        const addr = [s.wat, s.kuti, s.kutiHead ? `(${s.kutiHead})` : ''].filter(Boolean).join(' ') || '—';
+        
+        const caption = `🔵 <b>សិស្សសុំច្បាប់ (PERMISSION)</b>\n` +
+          `🆔 លេខកូដ: ${s.studentCode}\n` +
+          `👤 ឈ្មោះ: ${s.name}\n` +
+          `⚧ ភេទ: ${gender}\n` +
+          `📱 ទូរស័ព្ទ: ${phone}\n` +
+          `📍 អាសយដ្ឋាន: ${addr}\n` +
+          `📝 ច្បាប់ខែនេះ: ${monthly} ដង`;
+        
+        const fd = new FormData();
+        fd.append('chatId', chatId.trim());
+        fd.append('caption', caption);
+        if (s.photoUrl) fd.append('photoUrl', s.photoUrl);
+        
+        await fetch('/api/export/telegram', { method: 'POST', body: fd });
+        await new Promise(r => setTimeout(r, 500)); // anti-spam
       }
 
-      const fd = new FormData();
-      fd.append('chatId', chatId.trim());
-      fd.append('caption', text);
-
-      const res = await fetch('/api/export/telegram', { method: 'POST', body: fd });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'បរាជ័យក្នុងការផ្ញើ');
-      }
-      
       setTgTextStatus('ok');
       setTimeout(() => setTgTextStatus('idle'), 3000);
     } catch (err: any) {

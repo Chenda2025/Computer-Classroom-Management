@@ -63,6 +63,16 @@ export default function ClassesClient({ initialClasses, userRole, userPerms }: P
   const [search, setSearch] = useState('');
   const [filterYear, setFilterYear] = useState('');
 
+  const [viewMode, setViewMode] = useState<'table' | 'card'>('card');
+  useEffect(() => {
+    const saved = localStorage.getItem('classViewMode') as 'table' | 'card' | null;
+    if (saved === 'card' || saved === 'table') setViewMode(saved);
+  }, []);
+  const switchViewMode = (mode: 'table' | 'card') => {
+    setViewMode(mode);
+    localStorage.setItem('classViewMode', mode);
+  };
+
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState(EMPTY);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -103,6 +113,14 @@ export default function ClassesClient({ initialClasses, userRole, userPerms }: P
 
   const toggleSelect = (id: string) =>
     setSelectedIds(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === paginated.length && paginated.length > 0) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(paginated.map(c => c.id)));
+    }
+  };
 
   const resetPage = () => { setPage(1); setSelectedIds(new Set()); };
 
@@ -269,6 +287,23 @@ export default function ClassesClient({ initialClasses, userRole, userPerms }: P
         {(search || filterYear) && (
           <span className={styles.resultCount}>{filtered.length} / {classes.length} ថ្នាក់</span>
         )}
+
+        <div className={styles.viewToggle} style={{ marginLeft: 'auto' }}>
+          <button
+            className={`${styles.viewToggleBtn} ${viewMode === 'table' ? styles.viewToggleActive : ''}`}
+            onClick={() => switchViewMode('table')}
+            title="មើលជាតារាង"
+          >
+            ☰
+          </button>
+          <button
+            className={`${styles.viewToggleBtn} ${viewMode === 'card' ? styles.viewToggleActive : ''}`}
+            onClick={() => switchViewMode('card')}
+            title="មើលជាកាត"
+          >
+            ⊞
+          </button>
+        </div>
       </div>
 
       {/* ── Empty state ── */}
@@ -283,7 +318,7 @@ export default function ClassesClient({ initialClasses, userRole, userPerms }: P
       )}
 
       {/* ── Card grid ── */}
-      {paginated.length > 0 && (
+      {paginated.length > 0 && viewMode === 'card' && (
         <div className={cc.grid}>
           {paginated.map((c, i) => {
             const [col, colLight] = levelColor(c.educationLevel);
@@ -356,6 +391,77 @@ export default function ClassesClient({ initialClasses, userRole, userPerms }: P
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* ── Table view ── */}
+      {paginated.length > 0 && viewMode === 'table' && (
+        <div className={styles.tableWrapper}>
+          <table className={styles.table}>
+            <thead className={styles.thead}>
+              <tr>
+                <th className={styles.checkCell}>
+                  <input type="checkbox" className={styles.checkbox} onChange={toggleSelectAll} checked={paginated.length > 0 && selectedIds.size === paginated.length} />
+                </th>
+                <th>លេខរៀង</th>
+                <th>ឈ្មោះថ្នាក់</th>
+                <th>កម្រិត/ផ្នែក</th>
+                <th>ឆ្នាំសិក្សា</th>
+                <th>សមត្ថភាព</th>
+                <th style={{ textAlign: 'right' }}>សកម្មភាព</th>
+              </tr>
+            </thead>
+            <tbody>
+              {paginated.map((c, i) => {
+                const [col] = levelColor(c.educationLevel);
+                return (
+                  <tr key={c.id} className={`${styles.row} ${selectedIds.has(c.id) ? styles.rowSelected : ''}`}>
+                    <td className={styles.checkCell}>
+                      {canDel && <input type="checkbox" className={styles.checkbox} checked={selectedIds.has(c.id)} onChange={() => toggleSelect(c.id)} />}
+                    </td>
+                    <td style={{ color: 'var(--color-text-secondary)', fontWeight: 600 }}>
+                      {(safePage - 1) * PAGE_SIZE + i + 1}
+                    </td>
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <div className={cc.heroIcon} style={{ background: `${col}18`, color: col, padding: 8, borderRadius: 8, fontSize: '1rem', width: 'auto', height: 'auto', display: 'flex' }}>🏫</div>
+                        <div>
+                          <div style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>{c.name}</div>
+                          <span style={{ color: 'var(--color-text-secondary)', fontSize: '0.85rem' }}>{c.classCode}</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                        {c.educationLevel && <span style={{ color: col, fontSize: '0.85rem', fontWeight: 600 }}>📚 {c.educationLevel}</span>}
+                        {c.grade && <span style={{ color: '#475569', fontSize: '0.85rem' }}>🎓 {c.grade}</span>}
+                      </div>
+                    </td>
+                    <td>
+                      <span style={{ background: '#f1f5f9', padding: '4px 8px', borderRadius: 6, fontSize: '0.85rem', fontWeight: 500, color: '#475569' }}>
+                        📅 {c.academicYear ?? '—'}
+                      </span>
+                    </td>
+                    <td>
+                      {c.maxStudents != null ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>{c.maxStudents}</span>
+                          <span style={{ color: 'var(--color-text-secondary)', fontSize: '0.85rem' }}>នាក់</span>
+                        </div>
+                      ) : <span style={{ color: 'var(--color-text-secondary)' }}>—</span>}
+                    </td>
+                    <td style={{ textAlign: 'right' }}>
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
+                        <button className={`${styles.iconBtn} ${styles.infoBtn}`} onClick={() => setInfoClass(c)} title="ព័ត៌មានលម្អិត">👁️</button>
+                        {canWri && <button className={`${styles.iconBtn} ${styles.editBtn}`} onClick={() => openEdit(c)} title="កែប្រែ">✏️</button>}
+                        {canDel && <button className={`${styles.iconBtn} ${styles.deleteBtn}`} onClick={() => setDeleteTarget(c.id)} title="លុប">🗑️</button>}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       )}
 

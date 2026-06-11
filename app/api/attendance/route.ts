@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '../../../lib/prisma';
 import { getSession } from '../../../lib/auth';
-import { sendTelegramNotification } from '../../../lib/telegram';
+import { sendTelegramNotification, sendTelegramPhoto } from '../../../lib/telegram';
 
 export async function GET(request: Request) {
   const session = await getSession();
@@ -62,10 +62,10 @@ export async function POST(request: Request) {
   });
 
   try {
-    const present = records.filter(r => r.status === 'PRESENT').length;
-    const absent = records.filter(r => r.status === 'ABSENT').length;
-    const permission = records.filter(r => r.status === 'PERMISSION').length;
-    const late = records.filter(r => r.status === 'LATE').length;
+    const present = records.filter((r: any) => r.status === 'PRESENT').length;
+    const absent = records.filter((r: any) => r.status === 'ABSENT').length;
+    const permission = records.filter((r: any) => r.status === 'PERMISSION').length;
+    const late = records.filter((r: any) => r.status === 'LATE').length;
     
     const msg = `📢 <b>[ATTENDANCE REPORT]</b>\n\n`
       + `📅 កាលបរិច្ឆេទ: <b>${date}</b>\n`
@@ -78,6 +78,59 @@ export async function POST(request: Request) {
       + `👥 សរុប: <b>${records.length}</b> នាក់`;
       
     await sendTelegramNotification(msg);
+
+    const alertRecords = records.filter((r: any) => r.status === 'ABSENT' || r.status === 'PERMISSION');
+    if (alertRecords.length > 0) {
+      const alertStudentIds = alertRecords.map((r: any) => r.studentId);
+      
+      const students = await prisma.student.findMany({
+        where: { id: { in: alertStudentIds } }
+      });
+
+      const [y, m] = date.split('-');
+      const monthStart = new Date(Date.UTC(Number(y), Number(m) - 1, 1));
+      const monthEnd = new Date(Date.UTC(Number(y), Number(m), 1));
+      
+      const monthlyAttendance = await prisma.attendance.groupBy({
+        by: ['studentId', 'status'],
+        where: {
+          studentId: { in: alertStudentIds },
+          date: { gte: monthStart, lt: monthEnd }
+        },
+        _count: { status: true }
+      });
+
+      for (const st of students) {
+        const rec = alertRecords.find((r: any) => r.studentId === st.id);
+        if (!rec) continue;
+
+        const isAbsent = rec.status === 'ABSENT';
+        const monthlyCount = monthlyAttendance.find(ma => ma.studentId === st.id && ma.status === rec.status)?._count.status || 0;
+        
+        const gender = st.gender === 'M' ? 'ប្រុស' : st.gender === 'F' ? 'ស្រី' : '—';
+        const phone = st.phone || '—';
+        const addr = [st.wat, st.kuti, st.kutiHead ? `(${st.kutiHead})` : ''].filter(Boolean).join(' ') || '—';
+        
+        const emoji = isAbsent ? '🔴' : '🔵';
+        const label = isAbsent ? 'សិស្សអវត្តមាន (ABSENT)' : 'សិស្សសុំច្បាប់ (PERMISSION)';
+        const countLabel = isAbsent ? 'អវត្តមានខែនេះ' : 'ច្បាប់ខែនេះ';
+
+        const caption = `${emoji} <b>${label}</b>\n`
+          + `🆔 លេខកូដ: ${st.studentCode}\n`
+          + `👤 ឈ្មោះ: ${st.name}\n`
+          + `⚧ ភេទ: ${gender}\n`
+          + `📱 ទូរស័ព្ទ: ${phone}\n`
+          + `📍 អាសយដ្ឋាន: ${addr}\n`
+          + `⚠️ ${countLabel}: ${monthlyCount} ដង`;
+
+        if (st.photoUrl) {
+          await sendTelegramPhoto(st.photoUrl, caption);
+        } else {
+          await sendTelegramNotification(caption);
+        }
+        await new Promise(r => setTimeout(r, 200));
+      }
+    }
   } catch (error) {
     console.error('Failed to send telegram notification', error);
   }

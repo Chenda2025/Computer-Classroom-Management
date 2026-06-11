@@ -3,6 +3,7 @@ import { useState, useMemo, useCallback, useEffect } from 'react';
 import { parsePermissions, canInsert, canWrite, canDelete } from '../../../lib/permissions';
 import { useRouter } from 'next/navigation';
 import styles from './courses.module.css';
+import tableStyles from '../students/students.module.css';
 import ExportModal from './ExportModal';
 
 interface Course {
@@ -103,6 +104,24 @@ export default function CoursesClient({ initialCourses, allStudents, enrolledStu
   const [search, setSearch] = useState('');
   const [enrollError, setEnrollError] = useState('');
   const [infoCourse, setInfoCourse] = useState<Course | null>(null);
+
+  const [viewMode, setViewMode] = useState<'table' | 'card'>('card');
+  useEffect(() => {
+    const saved = localStorage.getItem('courseViewMode') as 'table' | 'card' | null;
+    if (saved === 'card' || saved === 'table') setViewMode(saved);
+  }, []);
+  const switchViewMode = (mode: 'table' | 'card') => {
+    setViewMode(mode);
+    localStorage.setItem('courseViewMode', mode);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filtered.length && filtered.length > 0) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filtered.map(c => c.id)));
+    }
+  };
 
   const enrolledIds = useMemo(() => new Set(enrolled.map(s => s.id)), [enrolled]);
 
@@ -467,6 +486,23 @@ export default function CoursesClient({ initialCourses, allStudents, enrolledStu
           />
         </div>
         {search && <span className={styles.resultCount}>{filtered.length} / {courses.length} វគ្គ</span>}
+        
+        <div className={styles.viewToggle}>
+          <button
+            className={`${styles.viewToggleBtn} ${viewMode === 'table' ? styles.viewToggleActive : ''}`}
+            onClick={() => switchViewMode('table')}
+            title="មើលជាតារាង"
+          >
+            ☰
+          </button>
+          <button
+            className={`${styles.viewToggleBtn} ${viewMode === 'card' ? styles.viewToggleActive : ''}`}
+            onClick={() => switchViewMode('card')}
+            title="មើលជាកាត"
+          >
+            ⊞
+          </button>
+        </div>
       </div>
 
       {/* ── Empty ── */}
@@ -484,7 +520,7 @@ export default function CoursesClient({ initialCourses, allStudents, enrolledStu
       )}
 
       {/* ── Course grid ── */}
-      {filtered.length > 0 && (
+      {filtered.length > 0 && viewMode === 'card' && (
         <div className={styles.courseGrid}>
           {filtered.map((course, i) => {
             const clr = courseColor(courses.indexOf(course));
@@ -563,6 +599,73 @@ export default function CoursesClient({ initialCourses, allStudents, enrolledStu
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* ── Course table ── */}
+      {filtered.length > 0 && viewMode === 'table' && (
+        <div className={tableStyles.tableWrapper}>
+          <table className={tableStyles.table}>
+            <thead className={tableStyles.thead}>
+              <tr>
+                <th className={tableStyles.checkCell}>
+                  <input type="checkbox" className={tableStyles.checkbox} onChange={toggleSelectAll} checked={filtered.length > 0 && selectedIds.size === filtered.length} />
+                </th>
+                <th>ឈ្មោះវគ្គសិក្សា</th>
+                <th>លំដាប់</th>
+                <th>ការពិពណ៌នា</th>
+                <th>សិស្ស</th>
+                <th>កិច្ចតែង</th>
+                <th>ប្រឡង</th>
+                <th style={{ textAlign: 'right' }}>សកម្មភាព</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map(course => {
+                const clr = courseColor(courses.indexOf(course));
+                return (
+                  <tr key={course.id} className={`${tableStyles.row} ${selectedIds.has(course.id) ? tableStyles.rowSelected : ''}`}>
+                    <td className={tableStyles.checkCell}>
+                      <input type="checkbox" className={tableStyles.checkbox} checked={selectedIds.has(course.id)} onChange={() => {
+                        setSelectedIds(prev => {
+                          const n = new Set(prev);
+                          n.has(course.id) ? n.delete(course.id) : n.add(course.id);
+                          return n;
+                        });
+                      }} />
+                    </td>
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <div className={styles.courseAvatar} style={{ background: `linear-gradient(135deg, ${clr.color}, ${clr.light})`, width: 32, height: 32, fontSize: '0.8rem' }}>
+                          {initials(course.name)}
+                        </div>
+                        <span style={{ fontWeight: 600, color: 'var(--color-text-primary)' }}>{course.name}</span>
+                      </div>
+                    </td>
+                    <td>
+                      <span className={styles.cardBadge} style={{ background: clr.bg, color: clr.color, display: 'inline-flex' }}>
+                        <span className={styles.cardBadgeDot} /> លំដាប់ {course.order ?? 0}
+                      </span>
+                    </td>
+                    <td style={{ color: 'var(--color-text-secondary)' }}>{course.description || '—'}</td>
+                    <td><span style={{ color: clr.color, fontWeight: 600 }}>{course._count.enrollments}</span></td>
+                    <td><span style={{ color: '#2563eb', fontWeight: 600 }}>{course._count.lessonPlans}</span></td>
+                    <td><span style={{ color: '#d97706', fontWeight: 600 }}>{course._count.exams}</span></td>
+                    <td style={{ textAlign: 'right' }}>
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
+                        <button className={`${styles.iconBtn} ${styles.infoBtn}`} onClick={() => setInfoCourse(course)} title="ព័ត៌មានលម្អិត">👁️</button>
+                        <button className={styles.manageBtn} style={{ color: clr.color, borderColor: clr.color + '44', background: clr.bg, padding: '4px 8px', fontSize: '0.8rem' }} onClick={() => openAssign(course)}>
+                          {isAdmin ? '👥' : '👁️'}
+                        </button>
+                        {canWri && <button className={`${styles.iconBtn} ${styles.editBtn}`} onClick={() => openEdit(course)} title="កែប្រែ">✏️</button>}
+                        {canDel && <button className={`${styles.iconBtn} ${styles.deleteBtn}`} onClick={() => setDeleteTarget(course.id)} title="លុប">🗑️</button>}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       )}
 
