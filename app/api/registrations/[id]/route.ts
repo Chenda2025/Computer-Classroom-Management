@@ -9,9 +9,12 @@ export async function PATCH(request: Request, { params }: RouteContext) {
   if ('res' in auth) return auth.res;
 
   const { id } = await params;
-  const { action } = await request.json();
+  const { action, reason } = await request.json();
   if (!['APPROVE', 'REJECT'].includes(action)) {
     return NextResponse.json({ error: 'សកម្មភាពមិនត្រឹមត្រូវ' }, { status: 400 });
+  }
+  if (action === 'REJECT' && !reason?.trim()) {
+    return NextResponse.json({ error: 'សូមបញ្ចូលមូលហេតុនៃការបដិសេធ' }, { status: 400 });
   }
 
   try {
@@ -24,7 +27,7 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     if (action === 'REJECT') {
       const updated = await prisma.studentRegistration.update({
         where: { id },
-        data: { status: 'REJECTED' },
+        data: { status: 'REJECTED', rejectionReason: reason.trim() },
       });
       return NextResponse.json(updated);
     }

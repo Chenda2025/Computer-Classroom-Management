@@ -23,11 +23,18 @@ interface Registration {
   educationLevel: string | null;
   grade: string | null;
   notes: string | null;
+  rejectionReason: string | null;
   createdAt: string;
   updatedAt: string;
 }
 
 interface Props { initialRegistrations: Registration[]; userRole: string; userPerms: string; }
+
+const RegistrationAvatar = ({ id, name, className, style, fallback }: { id: string; name: string; className?: string; style?: React.CSSProperties; fallback: React.ReactNode }) => {
+  const [error, setError] = useState(false);
+  if (error) return <>{fallback}</>;
+  return <img src={`/api/registrations/${id}/photo`} alt={name} className={className} style={style} onError={() => setError(true)} />;
+};
 
 const STATUS_STYLE: Record<string, { color: string; bg: string; label: string }> = {
   PENDING:  { color: '#92400e', bg: '#fef3c7', label: 'រង់ចាំ' },
@@ -55,6 +62,9 @@ export default function RegistrationsClient({ initialRegistrations, userRole, us
   const [error, setError] = useState('');
   const [viewing, setViewing] = useState<Registration | null>(null);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [rejectTarget, setRejectTarget] = useState<Registration | null>(null);
+  const [rejectReason, setRejectReason] = useState('');
+  const [rejectError, setRejectError] = useState('');
 
   const isToday = (iso: string) => {
     const d = new Date(iso);
@@ -94,6 +104,45 @@ export default function RegistrationsClient({ initialRegistrations, userRole, us
     } catch {}
   };
 
+  const [tgSendingProfile, setTgSendingProfile] = useState(false);
+  const handleSendProfileTelegram = async (r: Registration) => {
+    setTgSendingProfile(true);
+    try {
+      const st = STATUS_STYLE[r.status] || STATUS_STYLE.PENDING;
+      const caption = `--- &gt;<b>ព័ត៌មានសំណើចុះឈ្មោះសិស្ស</b>&lt; ---\n` +
+        `<b>ឈ្មោះ៖</b> ${r.name}\n` +
+        (r.nameEn ? `<b>ឈ្មោះ(EN)៖</b> ${r.nameEn}\n` : '') +
+        `<b>ស្ថានភាព៖</b> ${st.label}\n` +
+        `<b>ភេទ៖</b> ${r.gender === 'M' ? 'ប្រុស' : r.gender === 'F' ? 'ស្រី' : '—'}\n` +
+        `<b>ថ្ងៃខែឆ្នាំកំណើត៖</b> ${r.dateOfBirth || '—'}\n` +
+        `<b>លេខទូរស័ព្ទ៖</b> ${r.phone || '—'}\n\n` +
+        `<b>ទីតាំងស្នាក់នៅ៖</b> វត្ត${r.wat || '—'} កុដិ${r.kuti || '—'}\n` +
+        `<b>ការសិក្សា៖</b> ${r.educationLevel || '—'} ថ្នាក់ទី ${r.grade || '—'}`;
+
+      const fd = new FormData();
+      fd.append('caption', caption);
+
+      try {
+        const photoRes = await fetch(`/api/registrations/${r.id}/photo`);
+        if (photoRes.ok) {
+          const blob = await photoRes.blob();
+          fd.append('file', blob);
+          fd.append('filename', 'profile.jpg');
+        }
+      } catch (e) {
+        console.warn('Failed to fetch photo, sending text only', e);
+      }
+
+      const res = await fetch('/api/export/telegram', { method: 'POST', body: fd });
+      if (!res.ok) throw new Error('បរាជ័យក្នុងការផ្ញើ');
+      alert('ផ្ញើចូល Telegram បានជោគជ័យ! ✓');
+    } catch (err: any) {
+      alert('មានបញ្ហាពេលផ្ញើ៖ ' + err.message);
+    } finally {
+      setTgSendingProfile(false);
+    }
+  };
+
   const handleAction = async (id: string, action: 'APPROVE' | 'REJECT') => {
     setError('');
     setBusyId(id);
@@ -107,6 +156,28 @@ export default function RegistrationsClient({ initialRegistrations, userRole, us
       if (!res.ok) { setError(data.error || 'មានបញ្ហា'); return; }
       const newStatus = action === 'APPROVE' ? 'APPROVED' : 'REJECTED';
       setRegistrations(prev => prev.map(r => r.id === id ? { ...r, status: newStatus } : r));
+      window.location.reload();
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const confirmReject = async () => {
+    if (!rejectTarget) return;
+    if (!rejectReason.trim()) { setRejectError('សូមបញ្ចូលមូលហេតុនៃការបដិសេធ'); return; }
+    setRejectError('');
+    setBusyId(rejectTarget.id);
+    try {
+      const res = await fetch(`/api/registrations/${rejectTarget.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'REJECT', reason: rejectReason.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setRejectError(data.error || 'មានបញ្ហា'); return; }
+      setRejectTarget(null);
+      setRejectReason('');
+      setViewing(null);
       window.location.reload();
     } finally {
       setBusyId(null);
@@ -221,11 +292,7 @@ export default function RegistrationsClient({ initialRegistrations, userRole, us
               return (
                 <tr key={r.id} className={styles.row}>
                   <td>
-                    {r.photoUrl ? (
-                      <img src={r.photoUrl} alt={r.name} className={styles.avatar} />
-                    ) : (
-                      <div className={styles.avatarPlaceholder}>{r.name.charAt(0)}</div>
-                    )}
+                    <RegistrationAvatar id={r.id} name={r.name} className={styles.avatar} fallback={<div className={styles.avatarPlaceholder}>{r.name.charAt(0)}</div>} />
                   </td>
                   <td className={styles.nameCell}>
                     {r.name}
@@ -236,7 +303,10 @@ export default function RegistrationsClient({ initialRegistrations, userRole, us
                   <td className={styles.mutedCell}>{r.educationLevel ? `${r.educationLevel}${r.grade ? ` ${r.grade}` : ''}` : '—'}</td>
                   <td className={styles.mutedCell}>{formatDate(r.createdAt)}</td>
                   <td>
-                    <span style={{ background: st.bg, color: st.color, padding: '3px 10px', borderRadius: 999, fontSize: '0.78rem', fontWeight: 700 }}>
+                    <span
+                      title={r.status === 'REJECTED' && r.rejectionReason ? `មូលហេតុ៖ ${r.rejectionReason}` : undefined}
+                      style={{ background: st.bg, color: st.color, padding: '3px 10px', borderRadius: 999, fontSize: '0.78rem', fontWeight: 700, cursor: r.status === 'REJECTED' && r.rejectionReason ? 'help' : undefined }}
+                    >
                       {st.label}
                     </span>
                   </td>
@@ -248,7 +318,7 @@ export default function RegistrationsClient({ initialRegistrations, userRole, us
                           <button className={styles.actionBtn} title="អនុម័ត" disabled={busyId === r.id}
                             onClick={() => handleAction(r.id, 'APPROVE')}>✅</button>
                           <button className={styles.actionBtn} title="បដិសេធ" disabled={busyId === r.id}
-                            onClick={() => handleAction(r.id, 'REJECT')}>❌</button>
+                            onClick={() => setRejectTarget(r)}>❌</button>
                         </>
                       )}
                       {canDel && (
@@ -281,16 +351,24 @@ export default function RegistrationsClient({ initialRegistrations, userRole, us
             <div className={styles.infoModal} onClick={e => e.stopPropagation()}>
               <div className={styles.infoBanner} style={{ background: `linear-gradient(135deg, ${color}, ${colorLight})` }}>
                 <div className={styles.infoBannerAvatar}>
-                  {viewing.photoUrl
-                    ? <img src={viewing.photoUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    : <span style={{ color }}>{viewing.name.charAt(0)}</span>}
+                  <RegistrationAvatar id={viewing.id} name={viewing.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} fallback={<span style={{ color }}>{viewing.name.charAt(0)}</span>} />
                 </div>
                 <div className={styles.infoBannerText}>
                   <div className={styles.infoBannerName}>{viewing.name}</div>
                   {viewing.nameEn && <div className={styles.infoBannerSub}>{viewing.nameEn}</div>}
                   <span className={styles.infoBannerBadge} style={{ color: st.color }}>{st.label}</span>
                 </div>
-                <button className={styles.infoBannerClose} onClick={() => setViewing(null)}>✕</button>
+                <div style={{ display: 'flex', gap: 8, alignSelf: 'flex-start' }}>
+                  <button
+                    className={styles.infoBannerClose}
+                    style={{ width: 'auto', padding: '0 10px', display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.85rem' }}
+                    onClick={() => handleSendProfileTelegram(viewing)}
+                    disabled={tgSendingProfile}
+                  >
+                    ✈️ {tgSendingProfile ? 'កំពុងផ្ញើ...' : 'Telegram'}
+                  </button>
+                  <button className={styles.infoBannerClose} onClick={() => setViewing(null)}>✕</button>
+                </div>
               </div>
 
               <div className={styles.infoBody}>
@@ -377,6 +455,15 @@ export default function RegistrationsClient({ initialRegistrations, userRole, us
                   </div>
                 )}
 
+                {viewing.status === 'REJECTED' && viewing.rejectionReason && (
+                  <div className={styles.infoSection}>
+                    <div className={styles.infoSectionTitle}>មូលហេតុបដិសេធ</div>
+                    <div className={styles.infoItem}>
+                      <div className={styles.infoItemValue} style={{ fontWeight: 500, color: '#dc2626' }}>{viewing.rejectionReason}</div>
+                    </div>
+                  </div>
+                )}
+
                 <div className={styles.infoSection}>
                   <div className={styles.infoSectionTitle}>កាលបរិច្ឆេទស្នើសុំ</div>
                   <div className={styles.infoItem}>
@@ -391,7 +478,7 @@ export default function RegistrationsClient({ initialRegistrations, userRole, us
                     <button className="btn-primary" disabled={busyId === viewing.id}
                       onClick={() => { handleAction(viewing.id, 'APPROVE'); setViewing(null); }}>✅ អនុម័ត</button>
                     <button className={styles.cancelBtn} disabled={busyId === viewing.id}
-                      onClick={() => { handleAction(viewing.id, 'REJECT'); setViewing(null); }}>❌ បដិសេធ</button>
+                      onClick={() => setRejectTarget(viewing)}>❌ បដិសេធ</button>
                   </>
                 )}
                 <button className={styles.cancelBtn} onClick={() => setViewing(null)}>បិទ</button>
@@ -400,6 +487,33 @@ export default function RegistrationsClient({ initialRegistrations, userRole, us
           </div>
         );
       })()}
+
+      {/* ── Reject Reason Modal ── */}
+      {rejectTarget && (
+        <div className={styles.modalOverlay} onClick={() => { setRejectTarget(null); setRejectReason(''); setRejectError(''); }}>
+          <div className={styles.confirmCard} onClick={e => e.stopPropagation()}>
+            <h3>បដិសេធសំណើ — {rejectTarget.name}</h3>
+            {rejectError && <div className={styles.formError}>{rejectError}</div>}
+            <div className={styles.formGroup}>
+              <label>មូលហេតុនៃការបដិសេធ</label>
+              <textarea
+                className={styles.textarea}
+                rows={4}
+                value={rejectReason}
+                onChange={e => setRejectReason(e.target.value)}
+                placeholder="សូមបញ្ជាក់ពីមូលហេតុ ឬព័ត៌មានណាមួយដែលមិនត្រឹមត្រូវ..."
+                autoFocus
+              />
+            </div>
+            <div className={styles.formActions}>
+              <button className={styles.cancelBtn} onClick={() => { setRejectTarget(null); setRejectReason(''); setRejectError(''); }}>បោះបង់</button>
+              <button className="btn-primary" disabled={busyId === rejectTarget.id} onClick={confirmReject}>
+                {busyId === rejectTarget.id ? 'កំពុងបញ្ជូន...' : '❌ បដិសេធ'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

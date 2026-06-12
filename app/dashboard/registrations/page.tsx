@@ -12,6 +12,7 @@ export default async function RegistrationsPage() {
   const registrations = await prisma.studentRegistration.findMany({
     take: 1000,
     orderBy: { createdAt: 'desc' },
+    omit: { photoUrl: true },
   });
 
   return (

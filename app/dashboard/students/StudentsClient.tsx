@@ -165,7 +165,7 @@ export default function StudentsClient({ initialStudents, userRole, userPerms }:
   const handleSendProfileTelegram = async (student: Student) => {
     setTgSendingProfile(true);
     try {
-      const caption = `--- ><b>បញ្ជីឈ្មោះសិស្សសរុប</b>< ---\n` +
+      const caption = `--- &gt;<b>បញ្ជីឈ្មោះសិស្សសរុប</b>&lt; ---\n` +
         `<b>នៃសាលាពុទ្ធិកអនុវិទ្យាល័យ សម្ដេចព្រះសង្ឃរាជ ទេព វង្ស និរោធរង្សី</b>\n\n` +
         `<b>ឈ្មោះ៖</b> ${student.name}\n` +
         `<b>លេខកូដ៖</b> ${student.studentCode}\n` +
@@ -178,17 +178,15 @@ export default function StudentsClient({ initialStudents, userRole, userPerms }:
       const fd = new FormData();
       fd.append('caption', caption);
       
-      if (student.photoUrl) {
-        try {
-          const res = await fetch(student.photoUrl);
-          if (res.ok) {
-            const blob = await res.blob();
-            fd.append('file', blob);
-            fd.append('filename', 'profile.jpg');
-          }
-        } catch (e) {
-          console.warn('Failed to fetch photo, sending text only', e);
+      try {
+        const res = await fetch(`/api/students/${student.id}/photo`);
+        if (res.ok) {
+          const blob = await res.blob();
+          fd.append('file', blob);
+          fd.append('filename', 'profile.jpg');
         }
+      } catch (e) {
+        console.warn('Failed to fetch photo, sending text only', e);
       }
 
       const res = await fetch('/api/export/telegram', { method: 'POST', body: fd });

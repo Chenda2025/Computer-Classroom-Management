@@ -13,6 +13,7 @@ export async function GET(request: Request) {
     where: status ? { status } : undefined,
     orderBy: { createdAt: 'desc' },
     take: 1000,
+    omit: { photoUrl: true },
   });
   return NextResponse.json(registrations);
 }
