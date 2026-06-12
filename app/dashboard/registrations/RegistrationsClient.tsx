@@ -10,7 +10,6 @@ interface Registration {
   name: string;
   nameEn: string | null;
   phone: string | null;
-  photoUrl: string | null;
   gender: string | null;
   dateOfBirth: string | null;
   nationality: string | null;
