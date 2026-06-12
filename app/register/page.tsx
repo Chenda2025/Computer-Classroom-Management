@@ -160,6 +160,11 @@ export default function RegisterPage() {
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
+    if (bgWarning) {
+      setError('រូបថតរបស់អ្នកមានផ្ទៃខាងក្រោយមិនត្រឹមត្រូវ។ សូមផ្ទុករូបថតថ្មីដែលមានផ្ទៃខាងក្រោយពណ៌ស ឬពណ៌ខៀវ។');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
     setError('');
     setSubmitting(true);
     try {
