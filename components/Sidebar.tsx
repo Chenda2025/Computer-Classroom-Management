@@ -83,9 +83,9 @@ export default function Sidebar({ user, pendingCounts = {}, permMap = {} }: { us
       {/* Brand */}
       <div className={styles.sidebarBrand}>
         <Link href="/dashboard" className={styles.logo}>
-          <div className={styles.logoIcon}>🏫</div>
+          <img src="/school-emblem.png" alt="Logo" className={styles.logoIcon} style={{ background: 'white', objectFit: 'contain' }} />
           <div className={styles.logoText}>
-            <span className={styles.logoName}>គ្រប់គ្រងថ្នាក់</span>
+            <span className={styles.logoName}>ប្រព័ន្ធគ្រប់គ្រងថ្នាក់រៀន</span>
             <span className={styles.logoSub}>Classroom System</span>
           </div>
         </Link>
