@@ -117,67 +117,71 @@
   min-height: 80px;
 }
 
-.photoRow {
+.photoSection {
+  background: rgba(99, 102, 241, 0.04);
+  border: 1px solid rgba(99, 102, 241, 0.15);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 24px;
+  text-align: center;
+}
+
+.photoWarning {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: #ef4444;
+  margin-bottom: 16px;
+}
+
+.photoDisplayGrid {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+}
+
+.sampleCol {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+}
+
+.sampleImg {
+  width: 72px;
+  height: 96px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 2px solid #cbd5e1;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.uploadCol {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
 }
 
 .photoPreview {
-  width: 96px;
-  height: 96px;
+  width: 120px;
+  height: 120px;
   border-radius: 50%;
   object-fit: cover;
-  border: 2px solid var(--color-border);
+  border: 3px solid var(--color-accent);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2);
 }
 
 .photoPlaceholder {
-  width: 96px;
-  height: 96px;
+  width: 120px;
+  height: 120px;
   border-radius: 50%;
   background: var(--color-accent-light);
   color: var(--color-accent);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 2rem;
-  border: 2px dashed var(--color-border);
-}
-
-.photoSection {
-  background: rgba(99, 102, 241, 0.04);
-  border: 1px solid rgba(99, 102, 241, 0.15);
-  border-radius: 12px;
-  padding: 16px;
-  margin-bottom: 24px;
-}
-
-.photoInstructions {
-  text-align: center;
-  margin-bottom: 16px;
-}
-
-.photoWarning {
-  font-size: 0.85rem;
-  font-weight: 700;
-  color: #ef4444;
-  margin-bottom: 12px;
-}
-
-.photoSamples {
-  display: flex;
-  justify-content: center;
-  gap: 16px;
-}
-
-.sampleImg {
-  width: 60px;
-  height: 80px;
-  object-fit: cover;
-  border-radius: 6px;
-  border: 2px solid #e2e8f0;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  font-size: 3rem;
+  border: 3px dashed var(--color-border);
 }
 
 .uploadBtnGroup {

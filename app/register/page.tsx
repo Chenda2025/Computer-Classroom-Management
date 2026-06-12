@@ -171,24 +171,26 @@ export default function RegisterPage() {
           {error && <div className={styles.error}>⚠ {error}</div>}
 
           <div className={styles.photoSection}>
-            <div className={styles.photoInstructions}>
-              <p className={styles.photoWarning}>⚠ រូបថតត្រូវតែមានផ្ទៃខាងក្រោយពណ៌ស ឬពណ៌ខៀវ</p>
-              <div className={styles.photoSamples}>
-                <img src="/sample-photo-blue.jpg" alt="Sample Blue" className={styles.sampleImg} />
-                <img src="/sample-photo-white.jpg" alt="Sample White" className={styles.sampleImg} />
+            <p className={styles.photoWarning}>⚠ រូបថតត្រូវតែមានផ្ទៃខាងក្រោយពណ៌ស ឬពណ៌ខៀវ</p>
+            <div className={styles.photoDisplayGrid}>
+              <div className={styles.sampleCol}>
+                <img src="/sample-monk-white.jpg" alt="Sample White" className={styles.sampleImg} />
               </div>
-            </div>
-            <div className={styles.photoRow}>
-              {form.photoUrl ? (
-                <img src={form.photoUrl} alt="Preview" className={styles.photoPreview} />
-              ) : (
-                <div className={styles.photoPlaceholder}>👤</div>
-              )}
-              <div className={styles.uploadBtnGroup}>
-                <input type="file" accept="image/*" id="photo-upload" style={{ display: 'none' }} onChange={handleUpload} disabled={uploading} />
-                <label htmlFor="photo-upload" className={styles.uploadLabel}>
-                  {uploading ? 'កំពុងផ្ទុក...' : 'ផ្ទុករូបភាព ៤x៦'}
-                </label>
+              <div className={styles.uploadCol}>
+                {form.photoUrl ? (
+                  <img src={form.photoUrl} alt="Preview" className={styles.photoPreview} />
+                ) : (
+                  <div className={styles.photoPlaceholder}>👤</div>
+                )}
+                <div className={styles.uploadBtnGroup}>
+                  <input type="file" accept="image/*" id="photo-upload" style={{ display: 'none' }} onChange={handleUpload} disabled={uploading} />
+                  <label htmlFor="photo-upload" className={styles.uploadLabel}>
+                    {uploading ? 'កំពុងផ្ទុក...' : 'ផ្ទុករូបភាព ៤x៦'}
+                  </label>
+                </div>
+              </div>
+              <div className={styles.sampleCol}>
+                <img src="/sample-monk-blue.jpg" alt="Sample Blue" className={styles.sampleImg} />
               </div>
             </div>
           </div>
