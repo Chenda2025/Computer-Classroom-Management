@@ -170,16 +170,27 @@ export default function RegisterPage() {
         <form className={styles.form} onSubmit={handleSubmit}>
           {error && <div className={styles.error}>⚠ {error}</div>}
 
-          <div className={styles.photoRow}>
-            {form.photoUrl ? (
-              <img src={form.photoUrl} alt="Preview" className={styles.photoPreview} />
-            ) : (
-              <div className={styles.photoPlaceholder}>👤</div>
-            )}
-            <input type="file" accept="image/*" id="photo-upload" style={{ display: 'none' }} onChange={handleUpload} disabled={uploading} />
-            <label htmlFor="photo-upload" className={styles.uploadLabel}>
-              {uploading ? 'កំពុងផ្ទុក...' : 'ផ្ទុករូបភាព'}
-            </label>
+          <div className={styles.photoSection}>
+            <div className={styles.photoInstructions}>
+              <p className={styles.photoWarning}>⚠ រូបថតត្រូវតែមានផ្ទៃខាងក្រោយពណ៌ស ឬពណ៌ខៀវ</p>
+              <div className={styles.photoSamples}>
+                <img src="/sample-photo-blue.jpg" alt="Sample Blue" className={styles.sampleImg} />
+                <img src="/sample-photo-white.jpg" alt="Sample White" className={styles.sampleImg} />
+              </div>
+            </div>
+            <div className={styles.photoRow}>
+              {form.photoUrl ? (
+                <img src={form.photoUrl} alt="Preview" className={styles.photoPreview} />
+              ) : (
+                <div className={styles.photoPlaceholder}>👤</div>
+              )}
+              <div className={styles.uploadBtnGroup}>
+                <input type="file" accept="image/*" id="photo-upload" style={{ display: 'none' }} onChange={handleUpload} disabled={uploading} />
+                <label htmlFor="photo-upload" className={styles.uploadLabel}>
+                  {uploading ? 'កំពុងផ្ទុក...' : 'ផ្ទុករូបភាព ៤x៦'}
+                </label>
+              </div>
+            </div>
           </div>
 
           {/* ── Basic info ── */}
