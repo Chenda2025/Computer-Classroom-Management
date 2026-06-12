@@ -52,7 +52,7 @@ export default function ExportModal({ classes, onClose }: Props) {
   
   const [mainTitle, setMainTitle] = useState('បញ្ជីថ្នាក់រៀនសរុប');
   const [subTitle, setSubTitle] = useState('នៃសាលាពុទ្ធិកអនុវិទ្យាល័យ សម្ដេចព្រះមហាសង្ឃរាជ បួរ គ្រី');
-  const [logoUrl, setLogoUrl] = useState<string>('');
+  const [logoUrl, setLogoUrl] = useState<string>('/school-emblem.png');
 
   const [signPlace, setSignPlace] = useState('រាជធានីភ្នំពេញ');
   const [autoLunarDate, setAutoLunarDate] = useState('ថ្ងៃ.......................ខែ.......................ឆ្នាំ....................... ព.ស.២៥......');

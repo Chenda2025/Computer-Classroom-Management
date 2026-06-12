@@ -76,7 +76,7 @@ export default function ExportModal({ students, courseName, date, statusMap, mon
   
   const [mainTitle, setMainTitle] = useState('របាយការណ៍វត្តមានសិស្ស');
   const [subTitle, setSubTitle] = useState(`វគ្គសិក្សា៖ ${courseName}`);
-  const [logoUrl, setLogoUrl] = useState<string>('');
+  const [logoUrl, setLogoUrl] = useState<string>('/school-emblem.png');
 
   const [signPlace, setSignPlace] = useState('រាជធានីភ្នំពេញ');
   const [autoLunarDate, setAutoLunarDate] = useState('ថ្ងៃ.......................ខែ.......................ឆ្នាំ....................... ព.ស.២៥......');

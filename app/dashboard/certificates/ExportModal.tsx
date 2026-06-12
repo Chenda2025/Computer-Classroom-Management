@@ -54,7 +54,7 @@ export default function ExportModal({ data, onClose }: Props) {
   
   const [mainTitle, setMainTitle] = useState('របាយការណ៍បញ្ជីវិញ្ញាបនបត្រ');
   const [subTitle, setSubTitle] = useState('សរុបទាំងអស់');
-  const [logoUrl, setLogoUrl] = useState<string>('');
+  const [logoUrl, setLogoUrl] = useState<string>('/school-emblem.png');
 
   const [signPlace, setSignPlace] = useState('រាជធានីភ្នំពេញ');
   const [autoLunarDate, setAutoLunarDate] = useState('ថ្ងៃ.......................ខែ.......................ឆ្នាំ....................... ព.ស.២៥......');

@@ -65,7 +65,7 @@ export default function ExportModal({ requests, onClose }: Props) {
   
   const [mainTitle, setMainTitle] = useState('របាយការណ៍ស្នើសុំប្រឡង');
   const [subTitle, setSubTitle] = useState('សរុបសិស្សទាំងអស់');
-  const [logoUrl, setLogoUrl] = useState<string>('');
+  const [logoUrl, setLogoUrl] = useState<string>('/school-emblem.png');
 
   const [signPlace, setSignPlace] = useState('រាជធានីភ្នំពេញ');
   const [autoLunarDate, setAutoLunarDate] = useState('ថ្ងៃ.......................ខែ.......................ឆ្នាំ....................... ព.ស.២៥......');
