@@ -52,6 +52,7 @@ export default function RegisterPage() {
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [bgWarning, setBgWarning] = useState('');
   const [done, setDone] = useState(false);
 
   useEffect(() => {
@@ -96,17 +97,56 @@ export default function RegisterPage() {
 
   const set = (k: keyof typeof EMPTY, val: string) => setForm(v => ({ ...v, [k]: val }));
 
+  const checkImageBackground = (url: string) => {
+    const img = new Image();
+    img.crossOrigin = 'Anonymous';
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      ctx.drawImage(img, 0, 0);
+      
+      const samples = [
+        ctx.getImageData(10, 10, 1, 1).data,
+        ctx.getImageData(img.width - 10, 10, 1, 1).data,
+        ctx.getImageData(10, img.height - 10, 1, 1).data,
+        ctx.getImageData(img.width - 10, img.height - 10, 1, 1).data,
+      ];
+      
+      let matchCount = 0;
+      for (const [r, g, b] of samples) {
+        const isWhite = r > 200 && g > 200 && b > 200;
+        const isBlue = b > 100 && r < 120 && g < 150 && b > r + 30;
+        if (isWhite || isBlue) matchCount++;
+      }
+      
+      if (matchCount < 2) {
+        setBgWarning('សូមប្រយ័ត្ន៖ ផ្ទៃខាងក្រោយរូបថតហាក់ដូចជាមិនត្រឹមត្រូវ។ សូមប្រាកដថាផ្ទៃខាងក្រោយពណ៌ស ឬខៀវ។');
+      } else {
+        setBgWarning('');
+      }
+    };
+    img.src = url;
+  };
+
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploading(true);
+    setBgWarning('');
     try {
       const fd = new FormData();
       fd.append('file', file);
       const res = await fetch('/api/public/upload', { method: 'POST', body: fd });
       const data = await res.json();
-      if (res.ok) setForm(v => ({ ...v, photoUrl: data.url }));
-      else setError(data.error || 'មានបញ្ហាក្នុងការផ្ទុករូបភាព');
+      if (res.ok) {
+        setForm(v => ({ ...v, photoUrl: data.url }));
+        checkImageBackground(data.url);
+      } else {
+        setError(data.error || 'មានបញ្ហាក្នុងការផ្ទុករូបភាព');
+      }
     } finally {
       setUploading(false);
       e.target.value = '';
@@ -173,9 +213,11 @@ export default function RegisterPage() {
           <div className={styles.photoSection}>
             <p className={styles.photoWarning}>⚠ រូបថតត្រូវតែមានផ្ទៃខាងក្រោយពណ៌ស ឬពណ៌ខៀវ</p>
             <div className={styles.photoDisplayGrid}>
-              <div className={styles.sampleCol}>
-                <img src="/sample-monk-white.jpg" alt="Sample White" className={styles.sampleImg} />
-              </div>
+              {!form.photoUrl && (
+                <div className={styles.sampleCol}>
+                  <img src="/sample-monk-white.jpg" alt="Sample White" className={styles.sampleImg} />
+                </div>
+              )}
               <div className={styles.uploadCol}>
                 {form.photoUrl ? (
                   <img src={form.photoUrl} alt="Preview" className={styles.photoPreview} />
@@ -185,13 +227,16 @@ export default function RegisterPage() {
                 <div className={styles.uploadBtnGroup}>
                   <input type="file" accept="image/*" id="photo-upload" style={{ display: 'none' }} onChange={handleUpload} disabled={uploading} />
                   <label htmlFor="photo-upload" className={styles.uploadLabel}>
-                    {uploading ? 'កំពុងផ្ទុក...' : 'ផ្ទុករូបភាព ៤x៦'}
+                    {uploading ? 'កំពុងផ្ទុក...' : (form.photoUrl ? 'ប្តូររូបថតផ្សេង' : 'ផ្ទុករូបភាព ៤x៦')}
                   </label>
                 </div>
+                {bgWarning && <p style={{ color: '#ea580c', fontSize: '0.8rem', fontWeight: 'bold', marginTop: '4px' }}>{bgWarning}</p>}
               </div>
-              <div className={styles.sampleCol}>
-                <img src="/sample-monk-blue.jpg" alt="Sample Blue" className={styles.sampleImg} />
-              </div>
+              {!form.photoUrl && (
+                <div className={styles.sampleCol}>
+                  <img src="/sample-monk-blue.jpg" alt="Sample Blue" className={styles.sampleImg} />
+                </div>
+              )}
             </div>
           </div>
 
