@@ -234,12 +234,12 @@ export default function TestCertificateClient({ students = [] }: Props) {
 
       {/* FORM CONTROLS */}
       <div className="no-print" style={{ width: '100%', maxWidth: '1122px', background: 'white', padding: '20px', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', marginBottom: '20px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+        <div className="form-header">
           <div>
             <h1 style={{ fontSize: '1.5rem', fontWeight: 'bold', margin: 0, color: '#000080' }}>ចេញវិញ្ញាបនបត្រទម្រង់ថ្មី</h1>
             <p style={{ margin: 0, color: '#64748b' }}>Select course and students, check boxes to override fields.</p>
           </div>
-          <div style={{ display: 'flex', gap: '10px' }}>
+          <div className="form-actions">
             <button
               onClick={handleTelegramExport}
               disabled={selectedStudentIds.length === 0 || isExporting}
@@ -264,10 +264,10 @@ export default function TestCertificateClient({ students = [] }: Props) {
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+        <div className="form-grid">
           {/* Column 1 */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-            <div style={{ display: 'flex', gap: '10px' }}>
+            <div className="input-row-flex">
               <div style={{ flex: 1 }}>
                 <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold', color: '#000080' }}>ជ្រើសរើសវគ្គសិក្សា (Select Course) *</label>
                 <select 
@@ -353,7 +353,7 @@ export default function TestCertificateClient({ students = [] }: Props) {
                 </div>
               </div>
             </div>
-            <div style={{ display: 'flex', gap: '10px' }}>
+            <div className="input-row-flex">
               <div style={{ flex: 1 }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '5px', fontWeight: 'bold', color: '#000080', cursor: 'pointer' }}>
                   <input type="checkbox" checked={editCourse} onChange={e => setEditCourse(e.target.checked)} />
@@ -389,7 +389,7 @@ export default function TestCertificateClient({ students = [] }: Props) {
 
           {/* Column 2 */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-            <div style={{ display: 'flex', gap: '10px' }}>
+            <div className="input-row-flex">
               <div style={{ flex: 1 }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '5px', fontWeight: 'bold', color: '#000080', cursor: 'pointer' }}>
                   <input type="checkbox" checked={editGrade} onChange={e => setEditGrade(e.target.checked)} />
@@ -495,6 +495,37 @@ export default function TestCertificateClient({ students = [] }: Props) {
         }
         .dropdown-item-selected:hover {
           background: #e0e7ff;
+        }
+
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .form-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .form-actions { display: flex; gap: 10px; }
+        .input-row-flex { display: flex; gap: 10px; }
+
+        .cert-list-wrapper {
+          width: 100%;
+          overflow-x: auto;
+          -webkit-overflow-scrolling: touch;
+          display: flex;
+          justify-content: center;
+          padding-bottom: 20px;
+        }
+
+        @media (max-width: 900px) {
+          .cert-list-wrapper { justify-content: flex-start; }
+        }
+
+        @media (max-width: 768px) {
+          .page-root { padding: 10px !important; }
+          .form-header { flex-direction: column; align-items: flex-start; gap: 15px; }
+          .form-actions { flex-wrap: wrap; width: 100%; }
+          .form-actions button { flex: 1; min-width: 140px; }
+          .form-grid { grid-template-columns: 1fr; }
+        }
+
+        @media (max-width: 480px) {
+          .input-row-flex { flex-direction: column; gap: 15px; }
+          .form-actions { flex-direction: column; }
         }
 
         .value-tooltip {
@@ -746,12 +777,13 @@ export default function TestCertificateClient({ students = [] }: Props) {
       `}</style>
 
       {/* PREVIEW WRAPPER */}
-      <div ref={certRef} className="cert-list" style={{ display: 'flex', flexDirection: 'column', gap: '30px', alignItems: 'center', opacity: selectedStudentIds.length ? 1 : 0.5, transition: 'opacity 0.3s', position: 'relative' }}>
-        {selectedStudentIds.length === 0 && (
-          <div className="no-print" style={{ position: 'absolute', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(2px)', fontSize: '1.2rem', fontWeight: 'bold', color: '#64748b' }}>
-            សូមជ្រើសរើសសិស្សដើម្បីបង្ហាញវិញ្ញាបនបត្រ
-          </div>
-        )}
+      <div className="cert-list-wrapper">
+        <div ref={certRef} className="cert-list" style={{ display: 'flex', flexDirection: 'column', gap: '30px', alignItems: 'center', opacity: selectedStudentIds.length ? 1 : 0.5, transition: 'opacity 0.3s', position: 'relative' }}>
+          {selectedStudentIds.length === 0 && (
+            <div className="no-print" style={{ position: 'absolute', inset: 0, zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(2px)', fontSize: '1.2rem', fontWeight: 'bold', color: '#64748b' }}>
+              សូមជ្រើសរើសសិស្សដើម្បីបង្ហាញវិញ្ញាបនបត្រ
+            </div>
+          )}
         {(selectedStudentIds.length > 0 ? selectedStudents : [null]).map((student, idx) => {
           const data = generateCertificateData(student);
           return (
@@ -917,15 +949,15 @@ export default function TestCertificateClient({ students = [] }: Props) {
               </div>
               <div className="photo-id">
                 ID: {data.studentId}
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-        </div>
-      </div>
           );
         })}
+        </div>
       </div>
     </div>
   );
 }
-

@@ -330,3 +330,136 @@
   background: var(--color-accent-light);
   color: var(--color-accent);
 }
+
+/* ═══════════════════════════════════════════
+   Mobile Responsive Styles (Global Dashboard Shell)
+   ═══════════════════════════════════════════ */
+.mobileTopbar {
+  display: none;
+}
+.sidebarOverlay {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  /* Allow 2 columns to squeeze on tablet */
+  :global(div[class*="statsRow"]) {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .dashboardContainer {
+    flex-direction: column;
+  }
+  
+  .mobileTopbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: #0f172a;
+    color: white;
+    flex-shrink: 0;
+    z-index: 20;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  }
+  
+  .mobileTopbarBrand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: #f1f5f9;
+  }
+  
+  .mobileTopbarLogo {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+  }
+  
+  .mobileMenuBtn {
+    background: transparent;
+    border: none;
+    color: white;
+    font-size: 1.6rem;
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 6px;
+  }
+  
+  .mobileMenuBtn:active {
+    background: rgba(255,255,255,0.1);
+  }
+
+  /* Sidebar behavior on mobile */
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: -280px;
+    width: 260px;
+    height: 100vh;
+    z-index: 50;
+    transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: none;
+  }
+  
+  .sidebarOpen {
+    left: 0;
+    box-shadow: 4px 0 24px rgba(0,0,0,0.5);
+  }
+  
+  .sidebarOverlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(2px);
+    z-index: 40;
+    animation: fadeIn 0.3s ease;
+  }
+  
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  /* Main content adjusts to not stretch past screen */
+  .mainContent {
+    padding: 16px;
+    height: calc(100vh - 56px); /* subtract topbar height approx */
+    overflow-x: hidden;
+  }
+  
+  /* Global Overrides for standard modules */
+  :global(div[class*="tableWrapper"]) {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+  }
+
+  :global(div[class*="formRow"]) {
+    grid-template-columns: 1fr !important;
+  }
+
+  :global(div[class*="statsRow"]) {
+    grid-template-columns: 1fr !important;
+  }
+
+  :global(div[class*="pageHeader"]) {
+    flex-direction: column;
+    align-items: flex-start !important;
+  }
+
+  :global(div[class*="toolbar"]) {
+    flex-direction: column;
+    align-items: stretch !important;
+  }
+
+  :global(div[class*="modalCard"]), :global(div[class*="confirmCard"]) {
+    padding: 20px !important;
+    margin: 10px;
+  }
+}

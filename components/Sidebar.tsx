@@ -56,8 +56,20 @@ export default function Sidebar({ user, pendingCounts = {}, permMap = {} }: { us
   const pathname = usePathname();
   const role = user?.role ?? 'MONITOR';
   const [counts, setCounts] = useState(pendingCounts);
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
 
-  useEffect(() => { setCounts(pendingCounts); }, [pendingCounts]);
+  useEffect(() => { 
+    if (JSON.stringify(counts) !== JSON.stringify(pendingCounts)) {
+      setCounts(pendingCounts); 
+    }
+  }, [pendingCounts, counts]);
+
+  // Close sidebar on mobile when navigating
+  useEffect(() => {
+    if (isMobileOpen) {
+      setIsMobileOpen(false);
+    }
+  }, [pathname, isMobileOpen]);
 
   useEffect(() => {
     const interval = setInterval(async () => {
@@ -80,7 +92,24 @@ export default function Sidebar({ user, pendingCounts = {}, permMap = {} }: { us
     : 'A';
 
   return (
-    <aside className={styles.sidebar}>
+    <>
+      {/* Mobile Topbar */}
+      <div className={`${styles.mobileTopbar} no-print`}>
+        <div className={styles.mobileTopbarBrand}>
+          <img src="/school-emblem.png" alt="Logo" className={styles.mobileTopbarLogo} style={{ background: 'white', objectFit: 'contain' }} />
+          <span>Classroom System</span>
+        </div>
+        <button className={styles.mobileMenuBtn} onClick={() => setIsMobileOpen(true)}>
+          ☰
+        </button>
+      </div>
+
+      {/* Overlay */}
+      {isMobileOpen && (
+        <div className={`${styles.sidebarOverlay} no-print`} onClick={() => setIsMobileOpen(false)} />
+      )}
+
+      <aside className={`${styles.sidebar} ${isMobileOpen ? styles.sidebarOpen : ''} no-print`}>
       {/* Brand */}
       <div className={styles.sidebarBrand}>
         <Link href="/dashboard" className={styles.logo}>
@@ -146,6 +175,7 @@ export default function Sidebar({ user, pendingCounts = {}, permMap = {} }: { us
         <LogoutInline />
       </div>
     </aside>
+    </>
   );
 }
 
