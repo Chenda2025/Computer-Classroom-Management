@@ -68,36 +68,31 @@ export default function RegisterPage() {
       .catch(() => {});
   }, []);
 
-  useEffect(() => {
-    const checkDuplicate = async () => {
-      if (form.name.trim() && form.nameEn.trim() && form.gender && form.phone.trim()) {
-        try {
-          const res = await fetch('/api/public/check-duplicate', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              name: form.name,
-              nameEn: form.nameEn,
-              gender: form.gender,
-              phone: form.phone,
-            }),
-          });
-          const data = await res.json();
-          if (data.duplicate) {
-            setError(data.message);
-          } else {
-            setError(prev => 
-              (prev === 'សិស្សដែលមានព័ត៌មានដូចគ្នានេះមានរួចហើយនៅក្នុងប្រព័ន្ធ' || 
-               prev === 'សិស្សដែលមានព័ត៌មានដូចគ្នានេះកំពុងរង់ចាំការអនុម័តរួចហើយ') ? '' : prev
-            );
-          }
-        } catch (e) {}
-      }
-    };
-    
-    const timer = setTimeout(checkDuplicate, 800);
-    return () => clearTimeout(timer);
-  }, [form.name, form.nameEn, form.gender, form.phone]);
+  const checkDuplicate = async () => {
+    if (form.name.trim() && form.nameEn.trim() && form.gender && form.phone.trim()) {
+      try {
+        const res = await fetch('/api/public/check-duplicate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: form.name,
+            nameEn: form.nameEn,
+            gender: form.gender,
+            phone: form.phone,
+          }),
+        });
+        const data = await res.json();
+        if (data.duplicate) {
+          setError(data.message);
+        } else {
+          setError(prev => 
+            (prev === 'សិស្សដែលមានព័ត៌មានដូចគ្នានេះមានរួចហើយនៅក្នុងប្រព័ន្ធ' || 
+             prev === 'សិស្សដែលមានព័ត៌មានដូចគ្នានេះកំពុងរង់ចាំការអនុម័តរួចហើយ') ? '' : prev
+          );
+        }
+      } catch (e) {}
+    }
+  };
 
   const set = (k: keyof typeof EMPTY, val: string) => setForm(v => ({ ...v, [k]: val }));
 
@@ -227,7 +222,8 @@ export default function RegisterPage() {
                 <label className={styles.label}>លេខទូរស័ព្ទ *</label>
                 <input type="tel" className={styles.input} required
                   placeholder="012 345 678"
-                  value={form.phone} onChange={e => set('phone', e.target.value)} />
+                  value={form.phone} onChange={e => set('phone', e.target.value)}
+                  onBlur={checkDuplicate} />
               </div>
               <div className={styles.field}>
                 <label className={styles.label}>សញ្ជាតិ *</label>
