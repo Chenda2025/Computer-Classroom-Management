@@ -96,12 +96,12 @@ export default function CertificatePrintModal({ certificate, onClose }: Props) {
       
       const html2canvas = (await import('html2canvas')).default;
       const canvas = await html2canvas(certRef.current, {
-        scale: 2,
+        scale: 1.5,
         useCORS: true,
         backgroundColor: '#ffffff'
       });
       
-      const photoBase64 = canvas.toDataURL('image/png');
+      const photoBase64 = canvas.toDataURL('image/jpeg', 0.85);
       
       const res = await fetch('/api/telegram/send-photo', {
         method: 'POST',

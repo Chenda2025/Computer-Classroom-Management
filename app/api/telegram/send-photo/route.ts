@@ -16,15 +16,21 @@ export async function POST(req: Request) {
     }
 
     // Base64 format: data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA...
-    const base64Data = photoBase64.replace(/^data:image\/\w+;base64,/, '');
+    const match = photoBase64.match(/^data:(image\/\w+);base64,(.+)$/);
+    if (!match) {
+      return NextResponse.json({ error: 'Invalid photo format' }, { status: 400 });
+    }
+    const [, mimeType, base64Data] = match;
     const buffer = Buffer.from(base64Data, 'base64');
     
     // Convert Buffer to Blob to be used in FormData
-    const blob = new Blob([buffer], { type: 'image/png' });
+    const blob = new Blob([buffer], { type: mimeType });
+
+    const extension = mimeType === 'image/png' ? 'png' : 'jpg';
 
     const formData = new FormData();
     formData.append('chat_id', chatId);
-    formData.append('photo', blob, 'certificate.png');
+    formData.append('photo', blob, `certificate.${extension}`);
     if (caption) {
       formData.append('caption', caption);
     }
