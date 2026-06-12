@@ -46,6 +46,7 @@ const NAV_GROUPS = [
       { href: '/dashboard/pagodas',      icon: '🛕', label: 'បញ្ជីវត្ត' },
       { href: '/dashboard/portfolios',   icon: '🗂️', label: 'ស្នាដៃសិស្ស' },
       { href: '/dashboard/certificates', icon: '🎓', label: 'វិញ្ញាបនបត្រ' },
+      { href: '/dashboard/certificates-test', icon: '🧪', label: 'តេស្តវិញ្ញាបនបត្រ' },
       { href: '/dashboard/users',        icon: '🔐', label: 'កំណត់សិទ្ធិ' },
     ],
   },
