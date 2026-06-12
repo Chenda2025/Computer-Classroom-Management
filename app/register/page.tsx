@@ -155,6 +155,11 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!form.photoUrl) {
+      setError('សូមផ្ទុករូបថត ៤x៦ របស់អ្នកជាមុនសិន (Photo is required)');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
     setError('');
     setSubmitting(true);
     try {
@@ -227,7 +232,7 @@ export default function RegisterPage() {
                 <div className={styles.uploadBtnGroup}>
                   <input type="file" accept="image/*" id="photo-upload" style={{ display: 'none' }} onChange={handleUpload} disabled={uploading} />
                   <label htmlFor="photo-upload" className={styles.uploadLabel}>
-                    {uploading ? 'កំពុងផ្ទុក...' : (form.photoUrl ? 'ប្តូររូបថតផ្សេង' : 'ផ្ទុករូបភាព ៤x៦')}
+                    {uploading ? 'កំពុងផ្ទុក...' : (form.photoUrl ? 'ប្តូររូបថតផ្សេង *' : 'ផ្ទុករូបភាព ៤x៦ *')}
                   </label>
                 </div>
                 {bgWarning && <p style={{ color: '#ea580c', fontSize: '0.8rem', fontWeight: 'bold', marginTop: '4px' }}>{bgWarning}</p>}
