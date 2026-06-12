@@ -65,7 +65,7 @@ export default function CoursesClient({ initialCourses, allStudents, enrolledStu
   const canIns = canInsert(permMap, 'courses', userRole);
   const canWri = canWrite(permMap, 'courses', userRole);
   const canDel = canDelete(permMap, 'courses', userRole);
-  const canInsExamReq = canInsert(permMap, 'exam-requests', userRole);
+  const canInsExamReq = canWri || canInsert(permMap, 'exam-requests', userRole);
   const isAdmin = userRole === 'ADMIN';
   const router = useRouter();
 

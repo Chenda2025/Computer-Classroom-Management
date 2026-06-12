@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '../../../lib/prisma';
 import { getSession } from '../../../lib/auth';
-import { requireInsert } from '../../../lib/apiAuth';
+import { requireInsert, requireWrite } from '../../../lib/apiAuth';
 
 export async function GET() {
   const session = await getSession();
@@ -18,8 +18,14 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const auth = await requireInsert('exam-requests');
-  if ('res' in auth) return auth.res;
+  let auth = await requireInsert('exam-requests');
+  if ('res' in auth) {
+    // Fallback: If they don't have explicit exam-requests insert permission,
+    // check if they have courses write permission (teachers managing courses).
+    const fallbackAuth = await requireWrite('courses');
+    if ('res' in fallbackAuth) return auth.res; // Return the original Forbidden error
+    auth = fallbackAuth;
+  }
 
   const { studentIds, examId, note } = await request.json();
   if (!studentIds || !Array.isArray(studentIds) || studentIds.length === 0 || !examId) {
