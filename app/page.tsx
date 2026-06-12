@@ -41,7 +41,7 @@ export default function Home() {
         <div className={styles.brandPattern} aria-hidden="true" />
 
         <div className={styles.brandLogo}>
-          <img src="/school-emblem.jpg" alt="School emblem" className={styles.brandIcon} />
+          <img src="/school-emblem.png" alt="School emblem" className={styles.brandIcon} />
           <span className={styles.brandName}>សាលាអនុវិទ្យាល័យសម្តេចព្រះសង្ឃរាជ<br />ទេព វង្ស និរោធរង្សី</span>
         </div>
 

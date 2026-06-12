@@ -134,7 +134,7 @@ export default function RegisterPage() {
     <div className={styles.wrapper}>
       <div className={styles.card}>
         <div className={styles.header}>
-          <img src="/school-emblem.jpg" alt="School emblem" className={styles.icon} />
+          <img src="/school-emblem.png" alt="School emblem" className={styles.icon} />
           <h1 className={styles.title}>ទម្រង់ចុះឈ្មោះសិស្សថ្មី</h1>
           <p className={styles.subtitle}>
             សូមបំពេញព័ត៌មានខាងក្រោម។ ព័ត៌មានរបស់អ្នកនឹងត្រូវបានពិនិត្យ និងអនុម័តដោយអ្នកគ្រប់គ្រងប្រព័ន្ធ។
