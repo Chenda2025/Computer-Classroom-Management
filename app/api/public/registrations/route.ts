@@ -14,21 +14,31 @@ export async function POST(request: Request) {
     }
 
     const trimmedName = name.trim();
+    const trimmedNameEn = nameEn?.trim() || null;
+    const trimmedPhone = phone?.trim() || null;
+    const genderVal = gender || null;
+
+    const duplicateCondition = {
+      name: trimmedName,
+      nameEn: trimmedNameEn,
+      gender: genderVal,
+      phone: trimmedPhone,
+    };
 
     // Check for duplicate in existing students
     const existingStudent = await prisma.student.findFirst({
-      where: { name: trimmedName }
+      where: duplicateCondition
     });
     if (existingStudent) {
-      return NextResponse.json({ error: 'សិស្សដែលមានឈ្មោះនេះមានរួចហើយនៅក្នុងប្រព័ន្ធ' }, { status: 400 });
+      return NextResponse.json({ error: 'សិស្សដែលមានព័ត៌មានដូចគ្នានេះមានរួចហើយនៅក្នុងប្រព័ន្ធ' }, { status: 400 });
     }
 
     // Check for duplicate in pending registrations
     const existingRegistration = await prisma.studentRegistration.findFirst({
-      where: { name: trimmedName, status: 'PENDING' }
+      where: { ...duplicateCondition, status: 'PENDING' }
     });
     if (existingRegistration) {
-      return NextResponse.json({ error: 'សិស្សដែលមានឈ្មោះនេះកំពុងរង់ចាំការអនុម័តរួចហើយ' }, { status: 400 });
+      return NextResponse.json({ error: 'សិស្សដែលមានព័ត៌មានដូចគ្នានេះកំពុងរង់ចាំការអនុម័តរួចហើយ' }, { status: 400 });
     }
 
     const registration = await prisma.studentRegistration.create({
