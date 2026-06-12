@@ -2,6 +2,7 @@ import { getSession } from '../../lib/auth';
 import { prisma } from '../../lib/prisma';
 import Link from 'next/link';
 import s from './overview.module.css';
+import RecentStudentAvatar from './RecentStudentAvatar';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,9 +13,6 @@ function avatarColor(str: string) {
   let h = 0;
   for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0;
   return AVATAR_COLORS[h % AVATAR_COLORS.length];
-}
-function initials(name: string) {
-  return name.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase() || '?';
 }
 function timeAgo(date: Date) {
   const s = Math.floor((Date.now() - date.getTime()) / 1000);
@@ -149,9 +147,7 @@ export default async function DashboardOverview() {
               <div className={s.activityEmpty}>មិនទាន់មានទិន្នន័យ</div>
             ) : recentStudents.map(st => (
               <div key={st.id} className={s.activityItem}>
-                <div className={s.activityAvatar} style={{ background: avatarColor(st.name) }}>
-                  {initials(st.name)}
-                </div>
+                <RecentStudentAvatar id={st.id} name={st.name} className={s.activityAvatar} style={{ background: avatarColor(st.name) }} />
                 <div className={s.activityBody}>
                   <div className={s.activityName}>{st.name}</div>
                   <div className={s.activitySub}>

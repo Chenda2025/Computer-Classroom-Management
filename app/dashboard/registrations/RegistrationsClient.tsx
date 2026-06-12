@@ -72,7 +72,7 @@ export default function RegistrationsClient({ initialRegistrations, userRole, us
   };
 
   const filtered = useMemo(() => {
-    if (tab === 'ALL') return registrations;
+    if (tab === 'ALL') return registrations.filter(r => r.status === 'PENDING' || isToday(r.updatedAt));
     if (tab === 'APPROVED' || tab === 'REJECTED') {
       return registrations.filter(r => r.status === tab && isToday(r.updatedAt));
     }
@@ -85,7 +85,7 @@ export default function RegistrationsClient({ initialRegistrations, userRole, us
     PENDING: registrations.filter(r => r.status === 'PENDING').length,
     APPROVED: registrations.filter(r => r.status === 'APPROVED' && isToday(r.updatedAt)).length,
     REJECTED: registrations.filter(r => r.status === 'REJECTED' && isToday(r.updatedAt)).length,
-    ALL: registrations.length,
+    ALL: registrations.filter(r => r.status === 'PENDING' || isToday(r.updatedAt)).length,
   } as Record<string, number>), [registrations]);
 
   const KHMER_MONTHS = ['មករា', 'កុម្ភៈ', 'មីនា', 'មេសា', 'ឧសភា', 'មិថុនា', 'កក្កដា', 'សីហា', 'កញ្ញា', 'តុលា', 'វិច្ឆិកា', 'ធ្នូ'];

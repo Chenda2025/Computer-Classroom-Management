@@ -8,7 +8,7 @@ import ExportModal from './ExportModal';
 
 interface ExamResult { id: string; score: number; createdAt: string; exam: { course: { name: string }, questions?: { points: number }[] } }
 interface ExamParticipation { id: string; currentScore: number; createdAt: string; session: { exam: { course: { name: string }, questions?: { points: number }[] } }; }
-interface Enrollment { id: string; createdAt: string; course: { name: string }; }
+interface Enrollment { id: string; createdAt: string; courseId: string; course: { id: string; name: string }; }
 interface Student { id: string; studentCode: string; name: string; nameEn?: string | null; photoUrl?: string | null; gender?: string | null; dateOfBirth?: string | null; grade?: string | null; enrollments?: Enrollment[]; examParticipations?: ExamParticipation[]; results?: ExamResult[]; }
 interface Certificate {
   id: string; title: string; issuedDate: string; description: string | null;
@@ -16,7 +16,7 @@ interface Certificate {
 }
 interface Props { initialCertificates: Certificate[]; students: Student[]; userRole: string; userPerms: string; }
 
-const EMPTY = { studentId: '', title: '', issuedDate: '', description: '' };
+const EMPTY = { courseId: '', studentId: '', title: '', issuedDate: '', description: '' };
 
 export default function CertificatesClient({ initialCertificates, students, userRole, userPerms }: Props) {
   const permMap = useMemo(() => parsePermissions(userPerms), [userPerms]);
@@ -34,6 +34,17 @@ export default function CertificatesClient({ initialCertificates, students, user
   const [deleting, setDeleting] = useState(false);
   const [printTarget, setPrintTarget] = useState<Certificate | null>(null);
   const [showExport, setShowExport] = useState(false);
+
+  const courses = useMemo(() => {
+    const map = new Map<string, string>();
+    students.forEach(s => s.enrollments?.forEach(e => map.set(e.course.id, e.course.name)));
+    return Array.from(map, ([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
+  }, [students]);
+
+  const courseStudents = useMemo(() => {
+    if (!form.courseId) return [];
+    return students.filter(s => s.enrollments?.some(e => e.courseId === form.courseId));
+  }, [students, form.courseId]);
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
@@ -143,10 +154,18 @@ export default function CertificatesClient({ initialCertificates, students, user
             <form onSubmit={handleSubmit} className={styles.form}>
               {error && <div className={styles.formError}>{error}</div>}
               <div className={styles.formGroup}>
+                <label>វគ្គសិក្សា *</label>
+                <select className={styles.input} required value={form.courseId}
+                  onChange={e => setForm(p => ({ ...p, courseId: e.target.value, studentId: '' }))}>
+                  <option value="">-- ជ្រើសវគ្គសិក្សា --</option>
+                  {courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </div>
+              <div className={styles.formGroup}>
                 <label>សិស្ស *</label>
-                <select className={styles.input} required value={form.studentId} onChange={e => set('studentId', e.target.value)}>
+                <select className={styles.input} required disabled={!form.courseId} value={form.studentId} onChange={e => set('studentId', e.target.value)}>
                   <option value="">-- ជ្រើសសិស្ស --</option>
-                  {students.map(s => <option key={s.id} value={s.id}>{s.name} ({s.studentCode})</option>)}
+                  {courseStudents.map(s => <option key={s.id} value={s.id}>{s.name} ({s.studentCode})</option>)}
                 </select>
               </div>
               <div className={styles.formGroup}>

@@ -22,7 +22,14 @@ export default async function CertificatesPage() {
         } 
       },
     }),
-    prisma.student.findMany({ take: 1000, orderBy: { name: 'asc' }, select: { id: true, studentCode: true, name: true, nameEn: true, gender: true, dateOfBirth: true } }),
+    prisma.student.findMany({
+      take: 1000,
+      orderBy: { name: 'asc' },
+      select: {
+        id: true, studentCode: true, name: true, nameEn: true, gender: true, dateOfBirth: true,
+        enrollments: { include: { course: { select: { id: true, name: true } } } },
+      },
+    }),
   ]);
 
   return (
@@ -52,7 +59,10 @@ export default async function CertificatesPage() {
           })),
         },
       }))}
-      students={students}
+      students={students.map(s => ({
+        ...s,
+        enrollments: s.enrollments.map(e => ({ ...e, createdAt: e.createdAt.toISOString() })),
+      }))}
       userRole={session.role}
       userPerms={session.permissions}
     />
