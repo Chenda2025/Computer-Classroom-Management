@@ -26,9 +26,9 @@
 }
 
 .icon {
-  width: 100px;
-  height: 100px;
-  margin: 0 auto 14px;
+  width: 150px;
+  height: 150px;
+  margin: 0 auto 16px;
   border-radius: 50%;
   object-fit: cover;
   display: block;
