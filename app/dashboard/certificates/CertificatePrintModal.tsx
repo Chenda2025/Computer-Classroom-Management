@@ -42,6 +42,7 @@ export default function CertificatePrintModal({ certificate, onClose }: Props) {
 
   const [showSettings, setShowSettings] = useState(false);
   const [showGuides, setShowGuides] = useState(false);
+  const [photoError, setPhotoError] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [sendingTelegram, setSendingTelegram] = useState(false);
   const certRef = useRef<HTMLDivElement>(null);
@@ -390,8 +391,8 @@ export default function CertificatePrintModal({ certificate, onClose }: Props) {
         {/* STUDENT PHOTO - CENTER BOTTOM */}
         <div className="cert-photo-box">
           <div className="cert-photo-frame">
-            {certificate.student.photoUrl ? (
-              <img src={certificate.student.photoUrl} alt="Student" />
+            {!photoError ? (
+              <img src={`/api/students/${certificate.student.id}/photo`} alt="Student" onError={() => setPhotoError(true)} />
             ) : (
               <div className="cert-photo-empty">រូបថត<br />៤x៦</div>
             )}
