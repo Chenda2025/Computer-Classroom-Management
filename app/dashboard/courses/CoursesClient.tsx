@@ -1,6 +1,7 @@
 'use client';
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { parsePermissions, canInsert, canWrite, canDelete } from '../../../lib/permissions';
+import { useLocalCache } from '../../../lib/useLocalCache';
 import { useRouter } from 'next/navigation';
 import styles from './courses.module.css';
 import tableStyles from '../students/students.module.css';
@@ -33,11 +34,14 @@ interface EnrolledStudent extends StudentSummary {
 
 interface Props {
   userPerms: string;
-  initialCourses: Course[];
-  allStudents: StudentSummary[];
-  enrolledStudentIds: string[];
   userRole: string;
 }
+
+const fetchCourses = async (): Promise<Course[]> => {
+  const res = await fetch('/api/courses');
+  if (!res.ok) throw new Error('Failed to load courses');
+  return res.json();
+};
 
 const EMPTY_FORM = { name: '', description: '', order: '' };
 
@@ -60,7 +64,7 @@ function initials(name: string) {
   return name.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase();
 }
 
-export default function CoursesClient({ initialCourses, allStudents, enrolledStudentIds, userRole, userPerms }: Props) {
+export default function CoursesClient({ userRole, userPerms }: Props) {
   const permMap = useMemo(() => parsePermissions(userPerms), [userPerms]);
   const canIns = canInsert(permMap, 'courses', userRole);
   const canWri = canWrite(permMap, 'courses', userRole);
@@ -69,8 +73,22 @@ export default function CoursesClient({ initialCourses, allStudents, enrolledStu
   const isAdmin = userRole === 'ADMIN';
   const router = useRouter();
 
-  const [courses, setCourses] = useState<Course[]>(initialCourses);
-  useEffect(() => { setCourses(initialCourses); }, [initialCourses]);
+  const { data: cachedCourses, loading: coursesLoading, refresh: refreshCourses, setData: setCourses } = useLocalCache<Course[]>('courses', fetchCourses);
+  const courses = cachedCourses ?? [];
+
+  // Enrollment eligibility (who's already enrolled anywhere) must stay live —
+  // it's used to block double-enrollment, so it's fetched fresh, not cached.
+  const [allStudents, setAllStudents] = useState<StudentSummary[]>([]);
+  const [enrolledStudentIds, setEnrolledStudentIds] = useState<string[]>([]);
+  useEffect(() => {
+    fetch('/api/students').then(res => res.json()).then((data: any[]) => {
+      const summaries: StudentSummary[] = data
+        .map(s => ({ id: s.id, studentCode: s.studentCode, name: s.name, phone: s.phone, photoUrl: s.photoUrl ?? null }))
+        .sort((a, b) => a.name.localeCompare(b.name));
+      setAllStudents(summaries);
+      setEnrolledStudentIds(data.filter(s => (s.enrollments?.length ?? 0) > 0).map(s => s.id));
+    }).catch(console.error);
+  }, []);
   const [courseModal, setCourseModal] = useState<'add' | 'edit' | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -423,6 +441,14 @@ export default function CoursesClient({ initialCourses, allStudents, enrolledStu
     } finally { setBulkExamReqLoading(false); }
   };
 
+  if (coursesLoading && cachedCourses === null) {
+    return (
+      <div className="animate-fade-in" style={{ padding: 60, textAlign: 'center', color: 'var(--color-text-secondary)' }}>
+        កំពុងផ្ទុកទិន្នន័យវគ្គសិក្សា...
+      </div>
+    );
+  }
+
   return (
     <>
     <div className="animate-fade-in">
@@ -436,6 +462,9 @@ export default function CoursesClient({ initialCourses, allStudents, enrolledStu
           </p>
         </div>
         <div style={{ display: 'flex', gap: 12 }}>
+          <button className="btn-secondary" onClick={() => refreshCourses()} disabled={coursesLoading}>
+            🔄 ផ្ទុកឡើងវិញ
+          </button>
           <button className="btn-secondary" onClick={() => setExportModal(true)}>
             📥 មើលរបាយការណ៍/នាំចេញ
           </button>

@@ -10,7 +10,7 @@ export async function GET() {
 
   const users = await prisma.user.findMany({
     orderBy: { createdAt: 'asc' },
-    select: { id: true, name: true, email: true, role: true, createdAt: true },
+    select: { id: true, name: true, email: true, role: true, permissions: true, createdAt: true },
   });
   return NextResponse.json(users);
 }
@@ -32,7 +32,7 @@ export async function POST(request: Request) {
     const hashed = await bcrypt.hash(password, 10);
     const user = await prisma.user.create({
       data: { name: name.trim(), email: email.trim(), password: hashed, role: role === 'ADMIN' ? 'ADMIN' : 'MONITOR' },
-      select: { id: true, name: true, email: true, role: true, createdAt: true },
+      select: { id: true, name: true, email: true, role: true, permissions: true, createdAt: true },
     });
     return NextResponse.json(user, { status: 201 });
   } catch (error) {

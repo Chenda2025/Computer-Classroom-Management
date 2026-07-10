@@ -1,6 +1,7 @@
 'use client';
 import { useState, useMemo, useEffect } from 'react';
 import { parsePermissions, canInsert, canWrite, canDelete } from '../../../lib/permissions';
+import { useLocalCache } from '../../../lib/useLocalCache';
 import { useRouter } from 'next/navigation';
 import styles from '../students/students.module.css';
 import weekStyles from './schedule.module.css';
@@ -13,7 +14,13 @@ interface ScheduleItem {
   type: string; courseId: string | null;
   createdAt: string; updatedAt: string;
 }
-interface Props { initialItems: ScheduleItem[]; courses: Course[]; userRole: string; userPerms: string; }
+interface Props { userRole: string; userPerms: string; }
+
+const fetchItems = async (): Promise<ScheduleItem[]> => {
+  const res = await fetch('/api/schedules');
+  if (!res.ok) throw new Error('Failed to load schedule');
+  return res.json();
+};
 
 const TYPE_COLORS: Record<string, { bg: string; color: string }> = {
   CLASS:   { bg: '#dbeafe', color: '#1d4ed8' },
@@ -47,15 +54,17 @@ function startOfWeek(d: Date) {
   return date;
 }
 
-export default function ScheduleClient({ initialItems, courses, userRole, userPerms }: Props) {
+export default function ScheduleClient({ userRole, userPerms }: Props) {
   const permMap = useMemo(() => parsePermissions(userPerms), [userPerms]);
   const router = useRouter();
   const canIns = canInsert(permMap, 'schedule', userRole);
   const canWri = canWrite(permMap, 'schedule', userRole);
   const canDel = canDelete(permMap, 'schedule', userRole);
   const isAdmin = userRole === 'ADMIN';
-  const [items, setItems] = useState<ScheduleItem[]>(initialItems);
-  useEffect(() => { setItems(initialItems); }, [initialItems]);
+  const { data: cachedItems, loading: itemsLoading, refresh: refreshItems, setData: setItems } = useLocalCache<ScheduleItem[]>('schedule', fetchItems);
+  const items = cachedItems ?? [];
+  const [courses, setCourses] = useState<Course[]>([]);
+  useEffect(() => { fetch('/api/courses').then(res => res.json()).then(setCourses).catch(console.error); }, []);
   const [search, setSearch] = useState('');
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState<typeof EMPTY>(EMPTY);
@@ -172,6 +181,14 @@ export default function ScheduleClient({ initialItems, courses, userRole, userPe
 
   const set = (k: keyof typeof EMPTY, v: string) => setForm(p => ({ ...p, [k]: v }));
 
+  if (itemsLoading && cachedItems === null) {
+    return (
+      <div className="animate-fade-in" style={{ padding: 60, textAlign: 'center', color: 'var(--color-text-secondary)' }}>
+        កំពុងផ្ទុកទិន្នន័យកាលវិភាគ...
+      </div>
+    );
+  }
+
   return (
     <div className="animate-fade-in">
       <div className={styles.pageHeader}>
@@ -181,7 +198,10 @@ export default function ScheduleClient({ initialItems, courses, userRole, userPe
             ធាតុសរុប: <strong style={{ color: 'var(--color-accent)' }}>{items.length}</strong>
           </p>
         </div>
-        {canIns && <button className="btn-primary" onClick={() => openAdd()}>+ បន្ថែម</button>}
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button className="btn-secondary" onClick={() => refreshItems()} disabled={itemsLoading}>🔄 ផ្ទុកឡើងវិញ</button>
+          {canIns && <button className="btn-primary" onClick={() => openAdd()}>+ បន្ថែម</button>}
+        </div>
       </div>
 
       <div className={styles.toolbar}>

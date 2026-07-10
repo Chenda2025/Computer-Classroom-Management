@@ -1,5 +1,6 @@
 'use client';
 import { useState, useRef } from 'react';
+import { useLocalCache } from '../../../lib/useLocalCache';
 import styles from './profile.module.css';
 
 interface UserData {
@@ -11,6 +12,12 @@ interface UserData {
   createdAt: string;
 }
 
+const fetchProfile = async (): Promise<UserData> => {
+  const res = await fetch('/api/profile');
+  if (!res.ok) throw new Error('Failed to load profile');
+  return res.json();
+};
+
 const AVATAR_COLORS = ['#6366f1','#8b5cf6','#0ea5e9','#10b981','#f59e0b'];
 function avatarColor(str: string) {
   let h = 0;
@@ -21,8 +28,7 @@ function initials(name: string) {
   return name.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase() || '?';
 }
 
-export default function ProfileClient({ initialUser }: { initialUser: UserData }) {
-  const [user, setUser] = useState(initialUser);
+function ProfileForm({ user, setUser }: { user: UserData; setUser: (u: UserData) => void }) {
   const [tab, setTab] = useState<'info' | 'password'>('info');
 
   // Photo upload
@@ -324,4 +330,19 @@ export default function ProfileClient({ initialUser }: { initialUser: UserData }
       )}
     </div>
   );
+}
+
+export default function ProfileClient({ userId }: { userId: string }) {
+  const { data: user, loading: userLoading, setData: setUser } = useLocalCache<UserData>(`profile:${userId}`, fetchProfile);
+
+  if (userLoading && user === null) {
+    return (
+      <div style={{ padding: 60, textAlign: 'center', color: 'var(--color-text-secondary)' }}>
+        កំពុងផ្ទុកទិន្នន័យ...
+      </div>
+    );
+  }
+  if (!user) return null;
+
+  return <ProfileForm user={user} setUser={setUser} />;
 }

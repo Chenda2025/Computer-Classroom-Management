@@ -6,7 +6,10 @@ import { requireInsert } from '../../../lib/apiAuth';
 export async function GET() {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  const pagodas = await prisma.pagoda.findMany({ orderBy: { name: 'asc' } });
+  const pagodas = await prisma.pagoda.findMany({
+    orderBy: { name: 'asc' },
+    include: { _count: { select: { kutis: true } } },
+  });
   return NextResponse.json(pagodas);
 }
 

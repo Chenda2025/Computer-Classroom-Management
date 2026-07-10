@@ -1,20 +1,10 @@
 import { redirect } from 'next/navigation';
 import { getSession } from '../../../lib/auth';
-import { prisma } from '../../../lib/prisma';
 import ProfileClient from './ProfileClient';
-
-export const dynamic = 'force-dynamic';
 
 export default async function ProfilePage() {
   const session = await getSession();
   if (!session?.id) redirect('/');
-
-  const user = await prisma.user.findUnique({
-    where: { id: session.id as string },
-    select: { id: true, name: true, email: true, role: true, photoUrl: true, createdAt: true },
-  });
-
-  if (!user) redirect('/');
 
   return (
     <div>
@@ -26,7 +16,7 @@ export default async function ProfilePage() {
           គ្រប់គ្រង​ព័ត៌មាន​និង​សុវត្ថិភាព​គណនី​របស់អ្នក
         </p>
       </div>
-      <ProfileClient initialUser={{ ...user, photoUrl: user.photoUrl ?? null, createdAt: user.createdAt.toISOString() }} />
+      <ProfileClient userId={session.id as string} />
     </div>
   );
 }

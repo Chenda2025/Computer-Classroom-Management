@@ -2,6 +2,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import s from './users.module.css';
 import { MODULES, PERM_ACTIONS, parsePermissions, type PermAction, type PermMap } from '../../../lib/permissions';
+import { useLocalCache } from '../../../lib/useLocalCache';
 import { useRouter } from 'next/navigation';
 
 interface User {
@@ -12,7 +13,13 @@ interface User {
   permissions: string;
   createdAt: string;
 }
-interface Props { initialUsers: User[]; currentUserId: string; }
+interface Props { currentUserId: string; }
+
+const fetchUsers = async (): Promise<User[]> => {
+  const res = await fetch('/api/users');
+  if (!res.ok) throw new Error('Failed to load users');
+  return res.json();
+};
 
 const EMPTY = { name: '', email: '', password: '', role: 'MONITOR' };
 
@@ -34,10 +41,10 @@ function avatarGrad(name: string) {
 
 const GROUPS = ['ការគ្រប់គ្រង', 'ការប្រឡង', 'ផ្សេងៗ'] as const;
 
-export default function UsersClient({ initialUsers, currentUserId }: Props) {
+export default function UsersClient({ currentUserId }: Props) {
   const router = useRouter();
-  const [users, setUsers]           = useState<User[]>(initialUsers);
-  useEffect(() => { setUsers(initialUsers); }, [initialUsers]);
+  const { data: cachedUsers, loading: usersLoading, refresh: refreshUsers, setData: setUsers } = useLocalCache<User[]>('users', fetchUsers);
+  const users = cachedUsers ?? [];
   const [search, setSearch]         = useState('');
   const [modal, setModal]           = useState(false);
   const [editTarget, setEditTarget] = useState<User | null>(null);
@@ -148,6 +155,14 @@ export default function UsersClient({ initialUsers, currentUserId }: Props) {
     new Date(iso).toLocaleDateString('km-KH', { year: 'numeric', month: 'short', day: 'numeric' });
 
   /* ── render ── */
+  if (usersLoading && cachedUsers === null) {
+    return (
+      <div className={s.page} style={{ padding: 60, textAlign: 'center', color: 'var(--color-text-secondary)' }}>
+        កំពុងផ្ទុកទិន្នន័យអ្នកប្រើប្រាស់...
+      </div>
+    );
+  }
+
   return (
     <div className={s.page}>
 
@@ -159,7 +174,10 @@ export default function UsersClient({ initialUsers, currentUserId }: Props) {
             <span>គ្រប់គ្រងគណនី និងការចូលប្រើរបស់អ្នកប្រើប្រាស់</span>
           </div>
         </div>
-        <button className="btn-primary" onClick={openAdd}>+ បន្ថែមអ្នកប្រើប្រាស់</button>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button className="btn-secondary" onClick={() => refreshUsers()} disabled={usersLoading}>🔄 ផ្ទុកឡើងវិញ</button>
+          <button className="btn-primary" onClick={openAdd}>+ បន្ថែមអ្នកប្រើប្រាស់</button>
+        </div>
       </div>
 
       {/* Stats */}

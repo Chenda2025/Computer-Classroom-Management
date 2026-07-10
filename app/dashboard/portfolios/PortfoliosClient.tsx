@@ -1,6 +1,7 @@
 'use client';
 import { useState, useMemo } from 'react';
 import { parsePermissions, canInsert } from '../../../lib/permissions';
+import { useLocalCache } from '../../../lib/useLocalCache';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import styles from '../students/students.module.css';
@@ -31,12 +32,22 @@ interface StudentFolder {
 }
 interface StudentOption { id: string; studentCode: string; name: string; photoUrl?: string | null; }
 interface CourseOption { id: string; name: string; students: StudentOption[]; }
-interface Props { students: StudentFolder[]; courses: CourseOption[]; userRole: string; userPerms: string; }
+interface Props { userRole: string; userPerms: string; }
+interface BrowseData { students: StudentFolder[]; courses: CourseOption[]; }
 
-export default function PortfoliosClient({ students, courses, userRole, userPerms }: Props) {
+const fetchBrowseData = async (): Promise<BrowseData> => {
+  const res = await fetch('/api/portfolios/browse');
+  if (!res.ok) throw new Error('Failed to load portfolios');
+  return res.json();
+};
+
+export default function PortfoliosClient({ userRole, userPerms }: Props) {
   const router = useRouter();
   const permMap = useMemo(() => parsePermissions(userPerms), [userPerms]);
   const canIns = canInsert(permMap, 'portfolios', userRole);
+  const { data: browseData, loading: browseLoading, refresh: refreshBrowse } = useLocalCache<BrowseData>('portfolios-browse', fetchBrowseData);
+  const students = browseData?.students ?? [];
+  const courses = browseData?.courses ?? [];
   const [search, setSearch] = useState('');
   const [picker, setPicker] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState('');
@@ -68,6 +79,14 @@ export default function PortfoliosClient({ students, courses, userRole, userPerm
   const openPicker = () => { setSelectedCourse(''); setPickerSearch(''); setPicker(true); };
   const choosePickerStudent = (id: string) => { setPicker(false); router.push(`/dashboard/portfolios/${id}`); };
 
+  if (browseLoading && browseData === null) {
+    return (
+      <div className="animate-fade-in" style={{ padding: 60, textAlign: 'center', color: 'var(--color-text-secondary)' }}>
+        កំពុងផ្ទុកទិន្នន័យស្នាដៃសិស្ស...
+      </div>
+    );
+  }
+
   return (
     <div className="animate-fade-in">
       <div className={styles.pageHeader}>
@@ -78,7 +97,10 @@ export default function PortfoliosClient({ students, courses, userRole, userPerm
             {' • '}ស្នាដៃសរុប <strong style={{ color: 'var(--color-accent)' }}>{totalWorks}</strong>
           </p>
         </div>
-        {canIns && <button className="btn-primary" onClick={openPicker}>+ ជ្រើសសិស្ស</button>}
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button className="btn-secondary" onClick={() => refreshBrowse()} disabled={browseLoading}>🔄 ផ្ទុកឡើងវិញ</button>
+          {canIns && <button className="btn-primary" onClick={openPicker}>+ ជ្រើសសិស្ស</button>}
+        </div>
       </div>
 
       <div className={styles.toolbar}>

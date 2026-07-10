@@ -1,6 +1,7 @@
 'use client';
 import { parsePermissions, canInsert, canDelete } from '../../../lib/permissions';
 import { useState, useMemo, useEffect } from 'react';
+import { useLocalCache } from '../../../lib/useLocalCache';
 import { useRouter } from 'next/navigation';
 import styles from '../students/students.module.css';
 import CertificatePrintModal from './CertificatePrintModal';
@@ -14,17 +15,27 @@ interface Certificate {
   id: string; title: string; issuedDate: string; description: string | null;
   studentId: string; student: Student; createdAt: string; updatedAt: string;
 }
-interface Props { initialCertificates: Certificate[]; students: Student[]; userRole: string; userPerms: string; }
+interface Props { userRole: string; userPerms: string; }
+interface BrowseData { certificates: Certificate[]; students: Student[]; }
 
 const EMPTY = { courseId: '', studentId: '', title: '', issuedDate: '', description: '' };
 
-export default function CertificatesClient({ initialCertificates, students, userRole, userPerms }: Props) {
+const fetchBrowseData = async (): Promise<BrowseData> => {
+  const res = await fetch('/api/certificates/browse');
+  if (!res.ok) throw new Error('Failed to load certificates');
+  return res.json();
+};
+
+export default function CertificatesClient({ userRole, userPerms }: Props) {
   const permMap = useMemo(() => parsePermissions(userPerms), [userPerms]);
   const router = useRouter();
   const canIns = canInsert(permMap, 'certificates', userRole);
   const canDel = canDelete(permMap, 'certificates', userRole);
-  const [certs, setCerts] = useState<Certificate[]>(initialCertificates);
-  useEffect(() => { setCerts(initialCertificates); }, [initialCertificates]);
+  const { data: browseData, loading: certsLoading, refresh: refreshCerts, setData: setBrowseData } = useLocalCache<BrowseData>('certificates-browse', fetchBrowseData);
+  const certs = browseData?.certificates ?? [];
+  const students = browseData?.students ?? [];
+  const setCerts = (updater: (prev: Certificate[]) => Certificate[]) =>
+    setBrowseData(prev => ({ ...prev, certificates: updater(prev.certificates) }));
   const [search, setSearch] = useState('');
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState(EMPTY);
@@ -84,6 +95,14 @@ export default function CertificatesClient({ initialCertificates, students, user
 
   const set = (k: keyof typeof EMPTY, v: string) => setForm(p => ({ ...p, [k]: v }));
 
+  if (certsLoading && browseData === null) {
+    return (
+      <div className="animate-fade-in" style={{ padding: 60, textAlign: 'center', color: 'var(--color-text-secondary)' }}>
+        កំពុងផ្ទុកទិន្នន័យវិញ្ញាបនបត្រ...
+      </div>
+    );
+  }
+
   return (
     <div className="animate-fade-in">
       <div className={styles.pageHeader}>
@@ -94,6 +113,7 @@ export default function CertificatesClient({ initialCertificates, students, user
           </p>
         </div>
         <div style={{ display: 'flex', gap: '12px' }}>
+          <button className="btn-secondary" onClick={() => refreshCerts()} disabled={certsLoading}>🔄 ផ្ទុកឡើងវិញ</button>
           <button className="btn-secondary" onClick={() => setShowExport(true)}>📤 ទាញយករបាយការណ៍</button>
           {canIns && <button className="btn-primary" onClick={() => { setError(''); setForm(EMPTY); setModal(true); }}>+ ចេញវិញ្ញាបនបត្រ</button>}
         </div>

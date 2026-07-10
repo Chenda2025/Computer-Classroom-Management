@@ -1,6 +1,7 @@
 'use client';
 import { useState, useMemo, useEffect } from 'react';
 import { parsePermissions, canInsert, canWrite, canDelete } from '../../../lib/permissions';
+import { useLocalCache } from '../../../lib/useLocalCache';
 import { useRouter } from 'next/navigation';
 import styles from '../students/students.module.css';
 import tc from './teachers.module.css';
@@ -28,11 +29,15 @@ interface Course {
 }
 
 interface Props {
-  initialTeachers: Teacher[];
-  courses: Course[];
   userRole: string;
   userPerms: string;
 }
+
+const fetchTeachers = async (): Promise<Teacher[]> => {
+  const res = await fetch('/api/teachers');
+  if (!res.ok) throw new Error('Failed to load teachers');
+  return res.json();
+};
 
 const EMPTY = {
   name: '', phone: '',
@@ -61,14 +66,16 @@ function subjectColor(subject: string | null) {
   return '#6366f1';
 }
 
-export default function TeachersClient({ initialTeachers, courses, userRole, userPerms }: Props) {
+export default function TeachersClient({ userRole, userPerms }: Props) {
   const permMap = useMemo(() => parsePermissions(userPerms), [userPerms]);
   const router = useRouter();
   const canIns = canInsert(permMap, 'teachers', userRole);
   const canWri = canWrite(permMap, 'teachers', userRole);
   const canDel = canDelete(permMap, 'teachers', userRole);
-  const [teachers, setTeachers] = useState<Teacher[]>(initialTeachers);
-  useEffect(() => { setTeachers(initialTeachers); }, [initialTeachers]);
+  const { data: cachedTeachers, loading: teachersLoading, refresh: refreshTeachers, setData: setTeachers } = useLocalCache<Teacher[]>('teachers', fetchTeachers);
+  const teachers = cachedTeachers ?? [];
+  const [courses, setCourses] = useState<Course[]>([]);
+  useEffect(() => { fetch('/api/courses').then(res => res.json()).then(setCourses).catch(console.error); }, []);
   const [search, setSearch] = useState('');
   const [filterSubject, setFilterSubject] = useState('');
   const [filterGender, setFilterGender] = useState('');
@@ -288,6 +295,14 @@ export default function TeachersClient({ initialTeachers, courses, userRole, use
     </div>
   );
 
+  if (teachersLoading && cachedTeachers === null) {
+    return (
+      <div className="animate-fade-in" style={{ padding: 60, textAlign: 'center', color: 'var(--color-text-secondary)' }}>
+        កំពុងផ្ទុកទិន្នន័យគ្រូបង្រៀន...
+      </div>
+    );
+  }
+
   return (
     <div className="animate-fade-in">
 
@@ -300,6 +315,9 @@ export default function TeachersClient({ initialTeachers, courses, userRole, use
           </p>
         </div>
         <div style={{ display: 'flex', gap: 12 }}>
+          <button className="btn-secondary" onClick={() => refreshTeachers()} disabled={teachersLoading}>
+            🔄 ផ្ទុកឡើងវិញ
+          </button>
           <button className="btn-secondary" onClick={() => setExportModal(true)}>
             📥 មើលរបាយការណ៍/នាំចេញ
           </button>

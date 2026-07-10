@@ -8,7 +8,7 @@ export async function GET() {
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const courses = await prisma.course.findMany({
-    orderBy: { createdAt: 'desc' },
+    orderBy: [{ order: 'asc' }, { createdAt: 'asc' }],
     include: {
       _count: { select: { enrollments: true, lessonPlans: true, exams: true } },
     },

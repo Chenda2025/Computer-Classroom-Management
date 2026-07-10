@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { parsePermissions, canInsert, canWrite, canDelete } from '../../../lib/permissions';
+import { useLocalCache } from '../../../lib/useLocalCache';
 import { useRouter } from 'next/navigation';
 import Select from 'react-select';
 import styles from '../students/students.module.css';
@@ -65,13 +66,19 @@ interface Pagoda {
   _count: { kutis: number };
 }
 
-interface Props { initialPagodas: Pagoda[]; userRole: string; userPerms: string; }
+interface Props { userRole: string; userPerms: string; }
+
+const fetchPagodas = async (): Promise<Pagoda[]> => {
+  const res = await fetch('/api/pagodas');
+  if (!res.ok) throw new Error('Failed to load pagodas');
+  return res.json();
+};
 
 const EMPTY_PAGODA = { name: '', province: '', district: '', commune: '', village: '', phone: '', notes: '' };
 const EMPTY_KUTI   = { pagodaId: '', name: '', floor: '', number: '', headId: '', subHeadId: '', notes: '' };
 const EMPTY_MONK   = { id: '', name: '', age: '', gender: 'ប្រុស', phone: '' };
 
-export default function PagodasClient({ initialPagodas, userRole, userPerms }: Props) {
+export default function PagodasClient({ userRole, userPerms }: Props) {
   const permMap = useMemo(() => parsePermissions(userPerms), [userPerms]);
   const router = useRouter();
   const canIns = canInsert(permMap, 'pagodas', userRole);
@@ -81,8 +88,8 @@ export default function PagodasClient({ initialPagodas, userRole, userPerms }: P
   const [activeTab, setActiveTab] = useState<'pagodas' | 'kutis'>('pagodas');
 
   // Data State
-  const [pagodas, setPagodas] = useState<Pagoda[]>(initialPagodas);
-  useEffect(() => { setPagodas(initialPagodas); }, [initialPagodas]);
+  const { data: cachedPagodas, loading: pagodasLoading, refresh: refreshPagodas, setData: setPagodas } = useLocalCache<Pagoda[]>('pagodas', fetchPagodas);
+  const pagodas = cachedPagodas ?? [];
   const [kutis, setKutis] = useState<Kuti[]>([]);
   const [headMonks, setHeadMonks] = useState<Monk[]>([]);
   const [subHeadMonks, setSubHeadMonks] = useState<Monk[]>([]);
@@ -263,6 +270,14 @@ export default function PagodasClient({ initialPagodas, userRole, userPerms }: P
 
   const getPagodaName = (id: string) => pagodas.find(p => p.id === id)?.name ?? '—';
 
+  if (pagodasLoading && cachedPagodas === null) {
+    return (
+      <div className="animate-fade-in" style={{ padding: 60, textAlign: 'center', color: 'var(--color-text-secondary)' }}>
+        កំពុងផ្ទុកទិន្នន័យវត្ត...
+      </div>
+    );
+  }
+
   return (
     <>
       <div className="animate-fade-in">
@@ -270,11 +285,12 @@ export default function PagodasClient({ initialPagodas, userRole, userPerms }: P
           <div>
             <h2>គ្រប់គ្រងទីតាំង</h2>
             <p style={{ color: 'var(--color-text-secondary)', marginTop: 6, fontSize: '0.9rem' }}>
-              វត្តសរុប: <strong style={{ color: 'var(--color-accent)' }}>{pagodas.length}</strong> | 
+              វត្តសរុប: <strong style={{ color: 'var(--color-accent)' }}>{pagodas.length}</strong> |
               កុដិសរុប: <strong style={{ color: 'var(--color-accent)' }}>{kutis.length}</strong>
             </p>
           </div>
           <div style={{ display: 'flex', gap: 10 }}>
+            <button className="btn-outline" onClick={() => refreshPagodas()} disabled={pagodasLoading}>🔄 ផ្ទុកឡើងវិញ</button>
             {canIns && <button className="btn-outline" onClick={openAddPagoda}>+ បន្ថែមវត្ត</button>}
             {canIns && <button className="btn-primary" onClick={openAddKuti}>+ បន្ថែមកុដិ</button>}
           </div>

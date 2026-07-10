@@ -1,6 +1,7 @@
 'use client';
 import { useState, useMemo, useEffect } from 'react';
 import { parsePermissions, canInsert, canWrite, canDelete } from '../../../lib/permissions';
+import { useLocalCache } from '../../../lib/useLocalCache';
 import { useRouter } from 'next/navigation';
 import Select from 'react-select';
 import CreatableSelect from 'react-select/creatable';
@@ -82,10 +83,15 @@ interface Student {
 }
 
 interface Props {
-  initialStudents: Student[];
   userRole: string;
   userPerms: string;
 }
+
+const fetchStudents = async (): Promise<Student[]> => {
+  const res = await fetch('/api/students');
+  if (!res.ok) throw new Error('Failed to load students');
+  return res.json();
+};
 
 type Tab = 'basic' | 'residence' | 'bio';
 
@@ -104,7 +110,7 @@ function isComplete(s: Student) {
   return !!(s.gender && s.dateOfBirth && s.wat);
 }
 
-export default function StudentsClient({ initialStudents, userRole, userPerms }: Props) {
+export default function StudentsClient({ userRole, userPerms }: Props) {
   const permMap = useMemo(() => parsePermissions(userPerms), [userPerms]);
   const router = useRouter();
   const canIns = canInsert(permMap, 'students', userRole);
@@ -112,8 +118,8 @@ export default function StudentsClient({ initialStudents, userRole, userPerms }:
   const canDel = canDelete(permMap, 'students', userRole);
   const isAdmin = userRole === 'ADMIN';
 
-  const [students, setStudents] = useState<Student[]>(initialStudents);
-  useEffect(() => { setStudents(initialStudents); }, [initialStudents]);
+  const { data: cachedStudents, loading: studentsLoading, refresh: refreshStudents, setData: setStudents } = useLocalCache<Student[]>('students', fetchStudents);
+  const students = cachedStudents ?? [];
   const [search, setSearch] = useState('');
   const [pagodaFilter, setPagodaFilter] = useState('');
   const [courseFilter, setCourseFilter] = useState('');
@@ -481,6 +487,14 @@ export default function StudentsClient({ initialStudents, userRole, userPerms }:
   const f = (v: typeof editForm, k: keyof typeof editForm, val: string) =>
     ({ ...v, [k]: val });
 
+  if (studentsLoading && cachedStudents === null) {
+    return (
+      <div className="animate-fade-in" style={{ padding: 60, textAlign: 'center', color: 'var(--color-text-secondary)' }}>
+        កំពុងផ្ទុកទិន្នន័យសិស្ស...
+      </div>
+    );
+  }
+
   return (
     <>
       <div className="animate-fade-in">
@@ -500,6 +514,9 @@ export default function StudentsClient({ initialStudents, userRole, userPerms }:
             </Link>
             <button className={styles.exportBtnOutline} onClick={() => setExportModal(true)}>
               📤 នាំចេញ
+            </button>
+            <button className={styles.exportBtnOutline} onClick={() => refreshStudents()} disabled={studentsLoading} title="ទាញយកទិន្នន័យចុងក្រោយពីម៉ាស៊ីនមេ">
+              🔄 ផ្ទុកឡើងវិញ
             </button>
             {canIns && (
               <button className="btn-primary" onClick={openAdd}>+ ចុះឈ្មោះសិស្ស</button>

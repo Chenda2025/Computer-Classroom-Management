@@ -1,6 +1,7 @@
 'use client';
 import { useState, useMemo, useEffect } from 'react';
 import { parsePermissions, canInsert, canWrite, canDelete } from '../../../lib/permissions';
+import { useLocalCache } from '../../../lib/useLocalCache';
 import { useRouter } from 'next/navigation';
 import styles from '../students/students.module.css';
 import cc from './classes.module.css';
@@ -20,10 +21,15 @@ interface ClassRow {
 }
 
 interface Props {
-  initialClasses: ClassRow[];
   userRole: string;
   userPerms: string;
 }
+
+const fetchClasses = async (): Promise<ClassRow[]> => {
+  const res = await fetch('/api/classes');
+  if (!res.ok) throw new Error('Failed to load classes');
+  return res.json();
+};
 
 function currentAcademicYear(): string {
   const y = new Date().getFullYear();
@@ -52,14 +58,14 @@ function levelColor(level: string | null): [string, string] {
   return ['#6366f1', '#818cf8'];
 }
 
-export default function ClassesClient({ initialClasses, userRole, userPerms }: Props) {
+export default function ClassesClient({ userRole, userPerms }: Props) {
   const permMap = useMemo(() => parsePermissions(userPerms), [userPerms]);
   const router = useRouter();
   const canIns = canInsert(permMap, 'classes', userRole);
   const canWri = canWrite(permMap, 'classes', userRole);
   const canDel = canDelete(permMap, 'classes', userRole);
-  const [classes, setClasses] = useState<ClassRow[]>(initialClasses);
-  useEffect(() => { setClasses(initialClasses); }, [initialClasses]);
+  const { data: cachedClasses, loading: classesLoading, refresh: refreshClasses, setData: setClasses } = useLocalCache<ClassRow[]>('classes', fetchClasses);
+  const classes = cachedClasses ?? [];
   const [search, setSearch] = useState('');
   const [filterYear, setFilterYear] = useState('');
 
@@ -229,6 +235,14 @@ export default function ClassesClient({ initialClasses, userRole, userPerms }: P
     </div>
   );
 
+  if (classesLoading && cachedClasses === null) {
+    return (
+      <div className="animate-fade-in" style={{ padding: 60, textAlign: 'center', color: 'var(--color-text-secondary)' }}>
+        កំពុងផ្ទុកទិន្នន័យថ្នាក់រៀន...
+      </div>
+    );
+  }
+
   return (
     <div className="animate-fade-in">
 
@@ -241,6 +255,9 @@ export default function ClassesClient({ initialClasses, userRole, userPerms }: P
           </p>
         </div>
         <div style={{ display: 'flex', gap: 12 }}>
+          <button className="btn-secondary" onClick={() => refreshClasses()} disabled={classesLoading}>
+            🔄 ផ្ទុកឡើងវិញ
+          </button>
           <button className="btn-secondary" onClick={() => setExportModal(true)}>
             📥 មើលរបាយការណ៍/នាំចេញ
           </button>
