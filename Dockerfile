@@ -24,6 +24,7 @@ ARG DATABASE_URL
 ENV DATABASE_URL=$DATABASE_URL
 
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_OPTIONS="--max-old-space-size=1024"
 
 RUN npx prisma generate && npx next build
 
